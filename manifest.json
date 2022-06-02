@@ -1,0 +1,29 @@
+{
+
+    "manifest_version": 2,
+    "name": "NovuloTraceFormatter",
+    "version": "2.2",
+  
+    "description": "Enables collapsing and expanding of rows in a Novulo trace and highlights slow process actions",
+  
+    "icons": {
+      "96": "icons/icon_donker.svg"
+    },
+  
+    "content_scripts": [
+      {
+        "matches": ["*://*/*Trace.axd*"],
+                
+        "js": ["trace.js"],
+
+        "css": ["style.css"]
+      }
+    ],
+
+    "applications": {
+      "gecko": {
+        "id": "{aa60b89a-b367-4c7b-879f-24bde4247a4c}"
+      }
+    }
+  }
+
