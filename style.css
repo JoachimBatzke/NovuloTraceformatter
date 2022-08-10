@@ -1,7 +1,47 @@
+body {
+  font-family: arial, sans-serif;
+}
+
+.hidden {
+  display: none;
+}
+
+#ranking {
+  position: fixed;
+  background-color: white;
+  right: 20px;
+  top: 60px;
+  font-size: 10pt;
+  box-shadow:
+0px 2px 4px -1px rgba(0,0,0,.2),
+0px 4px 5px 0px rgba(0,0,0,.14),
+0px 1px 10px 0px rgba(0,0,0,.12);
+ border-radius: 3px;
+}
+#ranking td {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+span.tracecontent a,
+a {
+  color: rgb(47, 133, 212);
+  text-decoration: none;
+}
+span.tracecontent a:hover,
+a:hover {
+  color: rgb(47, 133, 212);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 #buttonwrapper {
   position: fixed;
   right: 0px;
+  top: 20px;
 }
+
 #buttonwrapper button {
   margin-right: 20px;
   line-height: 30px;
@@ -10,25 +50,71 @@
     0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
 }
 
-span.tracecontent tr.collapsed {
-  background-color: darkgrey;
-}
 span.tracecontent tr button {
   white-space: nowrap;
 }
 
+span.tracecontent h3 {
+  line-height: 30px;
+  margin: 0px 0px 0px 0px;
+}
+
+span.tracecontent th {
+  padding: 0px 8px 0px 8px;
+}
+
+span.tracecontent tr.collapsed td span.start {
+  background-color: rgba(112, 177, 58, 0.7);
+  /*height: 30px;
+  line-height: 30px;*/
+  font-weight: bolder;
+}
+
+span.tracecontent tr td span.finish {
+  background-color: rgba(225, 133, 133, 0.3);
+}
+
+span.tracecontent td span.start {
+  cursor: pointer;
+  background-color: rgba(112, 177, 58, 0.3);
+  /*height: 20px;
+  line-height: 20px;
+  display: inline-block;*/
+  padding: 0 8px 0 8px;
+}
+
+span.tracecontent tr:hover td span.start {
+  background: rgba(112, 177, 58, 0.5);
+}
+
+span.tracecontent tr:hover td span.start:active {
+  background: rgba(112, 177, 58, 0.7);
+}
+
+tr td.error {
+  color: red;
+}
+
+#firstError {
+  background-color: red;
+  color: white;
+}
+
+#hideTables {
+  margin-bottom: 24px;
+}
+
 .spinner {
   border-radius: 50%;
-  border-top: 2px solid #f1f1f1;
-  width: 40px;
-  height: 40px;
+  border-top: 2px solid #000;
+  width: 16px;
+  height: 16px;
   -webkit-animation: spin 1s linear infinite; /* Safari */
   animation: spin 1s linear infinite;
-}
-#spinner {
-  visibility: hidden;
-  margin: 0 auto;
-  margin-top: 30px;
+  display: inline-block;
+  top: 5px;
+  position: relative;
+  margin-left: 10px;
 }
 
 /* Safari */
@@ -46,5 +132,49 @@ span.tracecontent tr button {
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+
+/*Darkmode*/
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #000000;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  #ranking {
+    background-color: #000;
+  }
+  span.tracecontent {
+    background-color: #000;
+  }
+  span.tracecontent b,
+  span.tracecontent {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  span.tracecontent tr.subhead {
+    background-color: #202020;
+  }
+  span.tracecontent th.alt,
+  span.tracecontent th.alt b {
+    background-color: rgb(59, 59, 59);
+  }
+  span.tracecontent td {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  span.tracecontent tr.alt {
+    background-color: #202020;
+  }
+  span.tracecontent a,
+  a,
+  span.tracecontent a:hover,
+  a:hover {
+    color: rgb(139, 196, 250);
+  }
+  span.tracecontent td.performance {
+    color: black;
+  }
+  span.tracecontent hr {
+    color: white;
   }
 }
