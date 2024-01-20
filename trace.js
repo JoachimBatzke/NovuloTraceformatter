@@ -99,7 +99,6 @@ if (!lazymode) {
   node.appendChild(button4);
   node.appendChild(button5);
   node.appendChild(button6);
-  node.appendChild(button7);
   node.appendChild(buttonIdsElement);
 
   document.body.insertBefore(node, document.body.firstChild);
