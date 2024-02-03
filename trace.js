@@ -1373,8 +1373,10 @@ function addSidToSortedArray(array) {
   return array;
 }
 
+//Get the cell with the content "Took xx ms", after the finish row
 function getTook(buttonId) {
-  //Get the cell with the content "Took xx ms", after the finish row
+
+  //Get the table cell
   var tc =
     table.rows[document.getElementById("f" + buttonId).rowIndex + 1].cells[1];
 
