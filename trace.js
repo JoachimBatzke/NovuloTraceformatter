@@ -186,6 +186,8 @@ if (lazymode) {
   );
 }
 
+// FUNCTIONS ----------------------------------------------------------------
+
 function openFeedbackMail() {
   var email = "traceformatter@joachimbatzke.com";
   var subject = "Feedback";
@@ -232,9 +234,7 @@ function findTable() {
   return t;
 }
 
-/**
- * Replaces the "Clear all current trace data" link with a button that clears the trace data.
- */
+//Replaces the "Clear all current trace data" link with a button that clears the trace data.
 function replaceClearButton() {
   var newBtnId = "clear-trace-btn";
 
@@ -274,6 +274,7 @@ function scanTableFindMatchesAddButtons(evt) {
   //Step 1: Setup progressbar
   //Step 2: Scanning and matching
   //Step 3: Adding all buttons
+
   totalNumSteps = 3;
 
   // ----------- Step 1 ------------//
@@ -281,6 +282,7 @@ function scanTableFindMatchesAddButtons(evt) {
   console.time("Total formatting");
   document.getElementById("buttontrigger").disabled = true;
   document.getElementById("buttontrigger").innerHTML = "Enabling collapsing";
+
   if (evt != undefined) {
     var e = evt.target;
     e.disabled = true;
@@ -289,7 +291,7 @@ function scanTableFindMatchesAddButtons(evt) {
 
   finishStep(); //Step 1
 
-  // Timeout to ensure that the spinner is displayed correctly
+  // Nest in a timeout to ensure that the spinner and the loading bar are displayed correctly
   setTimeout(() => {
     // ----------- Step 2 ------------//
 
@@ -307,8 +309,10 @@ function scanTableFindMatchesAddButtons(evt) {
 
     finishStep(); //Step 2
 
-    // ----------- Step 3 ------------//
+    // Nest in a timeout to ensure that the spinner and the loading bar are displayed correctly
     setTimeout(() => {
+      // ----------- Step 3 ------------//
+
       //Add all buttons based on promises that resolve individually
       addAllButtonsPromise();
       //addButtons(buttonids);
@@ -321,24 +325,27 @@ function scanTableFindMatchesAddButtons(evt) {
   }, 10); // <-- arbitrary number greater than the screen refresh rate
 }
 
-//Hide the button that triggers enables collapsing, since it is not relevant anymore
+//Hide the button that enables collapsing, when it is not relevant anymore
 function hideTriggerUIShowAllbuttons() {
   document.getElementById("buttontrigger").style.display = "none";
   //If collapsable elements exist, enable the UI elements
-  if (buttonids.length > 0) {
-    //show the buttons
-    document.getElementById("collapseAll").setAttribute("style", "");
-    document.getElementById("JumptoError").setAttribute("style", "");
-    document.getElementById("JumpToSlowest").setAttribute("style", "");
-    document.getElementById("mostpopular").setAttribute("style", "");
-
-    // Convert the array to a string
-    let butttonIDsString = JSON.stringify(buttonids);
-    // Store the string in a data attribute of a DOM element so they can be reused when the trace is opened again
-    document
-      .getElementById("buttonIdsElement")
-      .setAttribute("data-array", butttonIDsString);
+  if (buttonids.length < 0) {
+    return;
   }
+  //show the buttons
+  document.getElementById("collapseAll").setAttribute("style", "");
+  document.getElementById("JumptoError").setAttribute("style", "");
+  document.getElementById("JumpToSlowest").setAttribute("style", "");
+  document.getElementById("mostpopular").setAttribute("style", "");
+}
+
+function storeButtonIds() {
+  // Convert the id array to a string
+  let butttonIDsString = JSON.stringify(buttonids);
+  // Store the string in a data attribute of a DOM element so they can be reused when the trace is opened again
+  document
+    .getElementById("buttonIdsElement")
+    .setAttribute("data-array", butttonIDsString);
 }
 
 //Scan the whole table and fill the global variables with starting and finishing elements
@@ -490,9 +497,9 @@ function findMatch(processIdStart) {
     ) {
       console.log(
         "Could not find the finish element for s" +
-          StartingElements[i][0] +
-          "_" +
-          StartingElements[i][1]
+        StartingElements[i][0] +
+        "_" +
+        StartingElements[i][1]
       );
       //Get the cell of the failed process and highlight it red
       var unfinishedProcess = document.getElementById(
@@ -553,6 +560,7 @@ function addAllButtonsPromise() {
 
 function allButtonPromisesResolved() {
   hideTriggerUIShowAllbuttons();
+  storeButtonIds();
   finishStep(); //Step 3
   console.timeEnd("Total formatting");
 }
@@ -641,41 +649,6 @@ function toggleCollapseExpandAll(evt) {
   collapseExpandAll(collapseExpand);
 }
 
-/*
-//Collapse all rows of the table starting with the last. Input is either the string "collapse" or "expand".
-function collapseExpandAll(collapseExpand) {
-  var bl = buttonids.length;
-
-  const timerlabel = collapseExpand + " " + bl + " items";
-
-  console.time(timerlabel);
-
-  //Update the progress bar for every x buttons
-  var x = 100;
-  totalNumSteps = Math.round(bl / x);
-
-  if (collapseExpand == "collapse") {
-    //Loop through the array of all buttons and "press" each button from bottom to top
-    for (l = bl - 1; l >= 0; l--) {
-      toggleCollapse(buttonids[l], collapseExpand);
-      if (l % x == 0) {
-        finishStep();
-      }
-    }
-
-  } else if (collapseExpand == "expand") {
-    //Loop through the array of all buttons and "press" each button from top to bottom
-    for (l = 0; l < bl - 1; l++) {
-      toggleCollapse(buttonids[l], collapseExpand);
-    }
-    if (l % x == 0) {
-      finishStep();
-    }
-  }
-  console.timeEnd(timerlabel);
-}
-*/
-
 //Collapse or expand all rows of the table. Input is either the string "collapse" or "expand".
 function collapseExpandAll(collapseExpand) {
   //Log the total time of collapsing/expanding items
@@ -696,31 +669,6 @@ function collapseExpandAll(collapseExpand) {
     console.timeEnd(timerlabel);
     return;
 
-    /* OLD approach where the expanding happened per button. That was slow.
-    var batchIndex = 0;
-    var batchSize = x;
-    var batchCount = Math.ceil(bl / x);
-    var l = 0;
-
-    var expandBatchLoop = function () {
-      for (var i = 0; i < batchSize && l < bl; i++, l++) {
-        toggleCollapse(buttonids[l], collapseExpand);
-      }
-      finishStep();
-      batchIndex++;
-      if (batchIndex < batchCount) {
-        //Trigger next batch in 0 ms
-        setTimeout(expandBatchLoop, 0);
-      } else {
-        //All batches finished
-        enableButton("collapseAll");
-        console.timeEnd(timerlabel);
-      }
-    };
-
-    //Intialize recursion
-    expandBatchLoop();
-*/
   }
 }
 
@@ -832,6 +780,7 @@ function toggleCollapseWrapper(evt) {
 function toggleCollapseWrapper2(evt) {
   //console.log(evt.target);
   var id = evt.target.parentElement.id;
+
   if (id == "") {
     id = evt.target.parentElement.parentElement.id;
   }
@@ -842,9 +791,11 @@ function toggleCollapseWrapper2(evt) {
 
 //Collapse or expand rows
 function toggleCollapse(id, collapseExpand) {
+
   if (id === null || id === undefined || id === "") {
     return;
   }
+
   var sid = "s" + id;
   var start = document.getElementById(sid);
   var startcell = start.cells[1].getElementsByTagName("span")[1];
@@ -929,21 +880,22 @@ function noOfRows(id) {
   var start = document.getElementById(sid);
   var finish = document.getElementById(fid);
 
-  if (start != null && finish != null) {
-    //get positions
-    var startIndex = start.rowIndex;
-    var finishIndex = finish.rowIndex;
-
-    var noOfRows = finishIndex - startIndex;
-
-    if (noOfRows <= 0) {
-      console.log("Something is messed up with sid " + sid + " and fid " + fid);
-      return 0;
-    }
-    return noOfRows;
-  } else {
+  if (start == null || finish == null) {
     return undefined;
   }
+
+  //get positions
+  var startIndex = start.rowIndex;
+  var finishIndex = finish.rowIndex;
+
+  var noOfRows = finishIndex - startIndex ?? 0;
+
+  if (noOfRows <= 0) {
+    console.log("Something is messed up with sid " + sid + " and fid " + fid);
+    return 0;
+  }
+  return noOfRows;
+
 }
 
 // Scroll to the position of the slowest row, triggered by the dedicated button
@@ -986,13 +938,6 @@ function jumpToSlowPos(pos) {
 
   slowposEl = document.getElementById(posid);
 
-  /* Replaced by 
-  //Color the whole row in the color of the slow row element
-  applyPerformanceStyle(
-    slowposEl.parentElement.cells[1],
-    performanceranking[pos][0] * 10
-  );
-*/
   jumpToId(posid, slowposEl.parentElement);
 }
 
@@ -1006,24 +951,24 @@ function jumpToTriggerSid(evt) {
   //Expand all rows first so that the slow row will be visible with 100% certanty
   collapseExpandAll("expand");
 
-  var newsid = "";
+  var newSid = "";
 
   if (
     !trigger.classList.contains("prev") &&
     !trigger.classList.contains("next")
   ) {
-    newsid = popularranking[pos].sids[0];
+    newSid = popularranking[pos].sids[0];
   }
 
   if (trigger.classList.contains("prev")) {
-    newsid = getPrevsid(pos, sid);
+    newSid = getPrevsid(pos, sid);
   }
 
   if (trigger.classList.contains("next")) {
-    newsid = getNextsid(pos, sid);
+    newSid = getNextsid(pos, sid);
   }
-  tr.setAttribute("data-sid", newsid);
-  jumpToId(newsid);
+  tr.setAttribute("data-sid", newSid);
+  jumpToId(newSid);
 }
 
 //Jump to a specific starting element based on the starting id (sid)
