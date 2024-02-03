@@ -1,20 +1,8 @@
-//Measure how long it takes to render the DOM
-// Create a new PerformanceObserver to monitor the "navigation" performance entry type.
-const observer = new PerformanceObserver((list) => {
-  // Get the first entry in the list. This will be the most recent navigation event.
-  const entry = list.getEntries()[0];
-  // Calculate the time it took for the DOM to load.
-  const domLoadTime = Math.ceil(entry.duration);
-  // Log the time to the console.
-  console.log(
-    `It took ${domLoadTime} milliseconds to load the trace without formatting.`
-  );
-});
+//Measure how long it took to render the DOM and log it to the console
+measureDOMLoadingDuration();
 
-// Start observing the "navigation" performance entry type.
-observer.observe({ type: "navigation" });
-
-var table = findTable();
+//Find the table that contains the trace
+const table = findTable();
 
 //If no table exists that potentially contains trace info, throw an error
 if (table == undefined) {
@@ -26,7 +14,8 @@ if (table == undefined) {
   );
 }
 
-var tl = table.rows.length;
+//Global const for the table length of the table that contains the trace information
+const tl = table.rows.length;
 
 //Declare a variable to store all buttonids for collapse / uncollapse all action
 var buttonids = [];
@@ -50,110 +39,47 @@ if (arrayEl != null) {
   lazymode = buttonids.length > 0 ? true : false;
 }
 
-//Skip adding the buttons when they are already present
+if(lazymode){
+  //Re-apply all eventlisteners to all starting and finishing elements
+  for (i = 0; i < buttonids.length; i++) {
+    var row = document.getElementById("s" + buttonids[i]);
+    row.addEventListener("click", toggleCollapseWrapper2);
+  }
+  console.log(
+    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
+  );
+}
+
+//Only skip adding relevant UI elements when the trace has been formatted earlier
 if (!lazymode) {
-  //Add buttons to the DOM
-  var node = document.createElement("div");
-  node.id = "buttonwrapper";
 
-  var button0 = document.createElement("button");
-  button0.id = "JumptoError";
-  button0.style.display = "none";
-  button0.textContent = "Jump to error 🚨";
-
-  var button1 = document.createElement("button");
-  button1.id = "JumpToSlowest";
-  button1.style.display = "none";
-  button1.textContent = "Jump to slowest 🐌";
-
-  var button2 = document.createElement("button");
-  button2.id = "collapseAll";
-  button2.style.display = "none";
-  button2.className = "collapse";
-  button2.textContent = "▼ Collapse All";
-
-  var button3 = document.createElement("button");
-  button3.id = "buttontrigger";
-  button3.textContent = "Enable Collapsing";
-
-  var button4 = document.createElement("button");
-  button4.id = "topten";
-  button4.textContent = "Top twenty slowest 🥇";
-
-  var button5 = document.createElement("button");
-  button5.id = "mostpopular";
-  button5.style.display = "none";
-  button5.textContent = "Most popular 📸";
-
-  var button6 = document.createElement("button");
-  button6.id = "feedback";
-  button6.textContent = "Feedback 💌";
-
-  var buttonIdsElement = document.createElement("div");
-  buttonIdsElement.id = "buttonIdsElement";
-
-  node.appendChild(button3);
-  node.appendChild(button2);
-  node.appendChild(button0);
-  node.appendChild(button1);
-  node.appendChild(button4);
-  node.appendChild(button5);
-  node.appendChild(button6);
-  node.appendChild(buttonIdsElement);
-
-  document.body.insertBefore(node, document.body.firstChild);
+  // Add buttons to the DOM
+  addAllUIbuttons();
 
   //Add the progress bar to the DOM
-  // Create the container element
-  const container = document.createElement("div");
-  container.classList.add("progress-bar-container");
+  addProgressBarUI();
 
-  // Create the progress bar element
-  const progressBar = document.createElement("div");
-  progressBar.classList.add("progress-bar");
-  progressBar.style.width = 0;
-
-  // Append the progress bar to the container
-  container.appendChild(progressBar);
-
-  // Insert the container into the document body
-  document.body.appendChild(container);
-
-  // Add line numbers to the rows of the trace content table
+  //Add line numbers to the rows of the trace content table
   addLineNumbers();
 
   //Prevent extreme horizontal widths when cells have a lot of content like long SQL queries
   applyDefaultColumnWidth();
 }
 
-// Get the progress bar element
+//Initialize the progress bar element in the global scope
 const progressBar = document.querySelector(".progress-bar");
 
-// Set the initial number of steps
+//Set the initial number of finished steps
 var numStepsFinished = 0;
 
-//Is initialized as 0. Is set to the number of batches that are created in
-var totalNumSteps;
+//Global variable for the number of steps that will be displayed by the progress bar
+//Step 1: Setup progressbar
+//Step 2: Scanning and matching
+//Step 3: Adding all buttons
+var totalNumSteps = 3;
 
 //Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
-document.getElementById("JumptoError").addEventListener("click", jumpToError);
-document
-  .getElementById("JumpToSlowest")
-  .addEventListener("click", jumpToSlowest);
-document
-  .getElementById("buttontrigger")
-  .addEventListener("click", scanTableFindMatchesAddButtons);
-document
-  .getElementById("collapseAll")
-  .addEventListener("click", toggleCollapseExpandAll);
-document
-  .getElementById("topten")
-  .addEventListener("click", plotPerformanceTable);
-document
-  .getElementById("mostpopular")
-  .addEventListener("click", plotPopularTable);
-
-document.getElementById("feedback").addEventListener("click", openFeedbackMail);
+addEventListenersToButtons();
 
 //Store all tables of the trace in an array
 const tables = document.querySelectorAll(".tracecontent>table");
@@ -169,25 +95,114 @@ if (hasTablesTooHide()) {
   document.getElementById("hideTables").addEventListener("click", hideTables);
 }
 
-//Add buttons automatically if there are less than 30.000 rows
-//Adding buttons automatically for larger tables could otherwise lead to undesirable loading times
+//Format automatically if there are less than 30.000 rows. Formatting for larger tables would lead to undesirably long loading times
 if (tl < 30000 && !lazymode) {
   scanTableFindMatchesAddButtons();
 }
 
-if (lazymode) {
-  //Re-apply all eventlisteners to all starting and finishing elements
-  for (i = 0; i < buttonids.length; i++) {
-    var row = document.getElementById("s" + buttonids[i]);
-    row.addEventListener("click", toggleCollapseWrapper2);
-  }
-  console.log(
-    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
-  );
+
+// FUNCTIONS
+
+//Measure how long it takes to render the DOM and log it to the console
+function measureDOMLoadingDuration() {
+  // Create a new PerformanceObserver to monitor the "navigation" performance entry type.
+  const observer = new PerformanceObserver((list) => {
+    // Get the first entry in the list. This will be the most recent navigation event.
+    const entry = list.getEntries()[0];
+    // Calculate the time it took for the DOM to load.
+    const domLoadTime = Math.ceil(entry.duration);
+    // Log the time to the console.
+    console.log(
+      `It took ${domLoadTime} milliseconds to load the trace without formatting.`
+    );
+  });
+
+  // Start observing the "navigation" performance entry type.
+  observer.observe({ type: "navigation" });
 }
 
-// FUNCTIONS ----------------------------------------------------------------
+//Add all buttons to the top of the screen
+function addAllUIbuttons() {
+  var node = document.createElement("div");
+  node.id = "buttonwrapper";
 
+  //Create all button elements
+  var button1 = createButton("buttontrigger", "Enable Collapsing");
+  var button2 = createButton("collapseAll", "▼ Collapse All", "none", "collapse");
+  var button3 = createButton("JumptoError", "Jump to error 🚨");
+  var button4 = createButton("JumpToSlowest", "Jump to slowest 🐌");
+  var button5 = createButton("topten", "Top twenty slowest 🥇");
+  var button6 = createButton("mostpopular", "Most popular 📸", "none");
+  var button7 = createButton("feedback", "Feedback 💌");
+
+  //Append all buttons to the wrapper element
+  node.appendChild(button1);
+  node.appendChild(button2);
+  node.appendChild(button3);
+  node.appendChild(button4);
+  node.appendChild(button5);
+  node.appendChild(button6);
+  node.appendChild(button7);
+
+  //Create an element to store the IDs of the buttons later, when the formatting is done
+  var buttonIdsElement = document.createElement("div");
+  buttonIdsElement.id = "buttonIdsElement";
+  node.appendChild(buttonIdsElement);
+
+  document.body.insertBefore(node, document.body.firstChild);
+}
+
+//Create a button element 
+function createButton(id, text, display = "none", className = "") {
+  var button = document.createElement("button");
+  button.id = id;
+  button.style.display = display;
+  button.className = className;
+  button.textContent = text;
+  return button;
+}
+
+//Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
+function addEventListenersToButtons() {
+  document.getElementById("JumptoError").addEventListener("click", jumpToError);
+  document
+    .getElementById("JumpToSlowest")
+    .addEventListener("click", jumpToSlowest);
+  document
+    .getElementById("buttontrigger")
+    .addEventListener("click", scanTableFindMatchesAddButtons);
+  document
+    .getElementById("collapseAll")
+    .addEventListener("click", toggleCollapseExpandAll);
+  document
+    .getElementById("topten")
+    .addEventListener("click", plotPerformanceTable);
+  document
+    .getElementById("mostpopular")
+    .addEventListener("click", plotPopularTable);
+
+  document.getElementById("feedback").addEventListener("click", openFeedbackMail);
+}
+
+//Initialize the UI elements for the progress bar in the DOM
+function addProgressBarUI() {
+  //Create the container element
+  const container = document.createElement("div");
+  container.classList.add("progress-bar-container");
+
+  //Create the progress bar element
+  const progressBar = document.createElement("div");
+  progressBar.classList.add("progress-bar");
+  progressBar.style.width = 0;
+
+  //Append the progress bar to the container
+  container.appendChild(progressBar);
+
+  //Insert the container into the document body
+  document.body.appendChild(container);
+}
+
+//Open a mailto url to open a mail program for writing a feedback email
 function openFeedbackMail() {
   var email = "traceformatter@joachimbatzke.com";
   var subject = "Feedback";
@@ -271,11 +286,7 @@ var FinishElements = [];
 
 //Scan the whole table, find matches between process start and finish elements, then add buttons so they can be collapsed
 function scanTableFindMatchesAddButtons(evt) {
-  //Step 1: Setup progressbar
-  //Step 2: Scanning and matching
-  //Step 3: Adding all buttons
 
-  totalNumSteps = 3;
 
   // ----------- Step 1 ------------//
 
@@ -339,6 +350,7 @@ function hideTriggerUIShowAllbuttons() {
   document.getElementById("mostpopular").setAttribute("style", "");
 }
 
+//Store the button ids (start and end pairs) in the DOM. This way the ids can be extracted and reused when the trace html file is reopend again 
 function storeButtonIds() {
   // Convert the id array to a string
   let butttonIDsString = JSON.stringify(buttonids);
@@ -558,6 +570,7 @@ function addAllButtonsPromise() {
     });
 }
 
+//Execute the actions after a succesfully adding collapsable buttons to all required rows
 function allButtonPromisesResolved() {
   hideTriggerUIShowAllbuttons();
   storeButtonIds();
@@ -824,7 +837,7 @@ function toggleCollapse(id, collapseExpand) {
   }
 }
 
-//expand cells for a single startcell
+//Expand cells for a single startcell
 function expand(start, startcell, rowcount, startIndex) {
   //Show the start element again in case it was hidden
   start.classList.remove("hidden");
@@ -847,7 +860,7 @@ function expand(start, startcell, rowcount, startIndex) {
   start.classList.remove("collapsed");
 }
 
-//collapse rows for a single startcell
+//Collapse rows for a single startcell
 function collapse(startcell, rowcount, startIndex, start) {
   //switch the triangle
   startcell.innerHTML = "&#9658;" + startcell.innerHTML.slice(1);
@@ -898,7 +911,7 @@ function noOfRows(id) {
 
 }
 
-// Scroll to the position of the slowest row, triggered by the dedicated button
+//Scroll to the position of the slowest row, triggered by the dedicated button
 function jumpToSlowest(evt) {
   //The button that triggered the function
   var e = evt.target;
@@ -1029,7 +1042,7 @@ function getRanking() {
   return newranking;
 }
 
-//let the background of any element flash
+//Let the background color of any element flash
 function addFlash(el) {
   //Add flash class
   el.classList.add("flash");
@@ -1475,7 +1488,7 @@ function splitContent(td, string) {
   td.appendChild(node2);
 }
 
-// Function to update the progress bar
+//Update the progress bar UI at the top of the screen
 function updateProgressBar() {
   // Calculate the percentage of steps finished
   const percentComplete = (numStepsFinished / totalNumSteps) * 100;
@@ -1528,13 +1541,17 @@ function finishStep() {
   }, 500); //Progress bar stays visible for a short time after finishing
 }
 
+//Add line numbers to each line of the table that contains the actual trace
 function addLineNumbers() {
+  //Set the name of the column
   table.rows[1].cells[0].innerText = "#";
+  //Update each line with the correct number
   for (i = 2; i < tl; i++) {
     table.rows[i].cells[0].innerText = i - 1 + ".";
   }
 }
 
+//Ensure that the width of the relevant columns in the trace is set so that the trace becomes more readable. It prevents undesired resizing based on the cell contents
 function applyDefaultColumnWidth() {
   //Set the colspan of the first th cell from 10 to 4
   table.rows[0].cells[0].colSpan = 4;
