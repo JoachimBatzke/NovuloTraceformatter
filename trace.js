@@ -1633,4 +1633,3 @@ function applyDefaultColumnWidth() {
 
   table.style.tableLayout = "fixed";
 }
-
