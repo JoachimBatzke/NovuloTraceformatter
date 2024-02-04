@@ -1,24 +1,20 @@
+//SETUP ----
+
 //Measure how long it took to render the DOM and log it to the console
 measureDOMLoadingDuration();
 
 //Find the table that contains the trace
 const table = findTable();
 
-//If no table exists that potentially contains trace info, throw an error
-if (table == undefined) {
-  //If we are on the trace overview page replace the link with a clear button
-  replaceClearButton();
-
-  throw new Error(
-    "Traceformatter has stopped: No table found that can be formatted"
-  );
-}
-
 //Global const for the table length of the table that contains the trace information
 const tl = table.rows.length;
 
-//Declare a variable to store all buttonids for collapse / uncollapse all action
+//Declare a variable to store all buttonids for the collapse/uncollapse all actions
 var buttonids = [];
+
+//Array to store all pairs of starting elements (green rows) and finishing elements (red rows)
+var StartingElements = [];
+var FinishElements = [];
 
 //Ranking of all rows sorted from slowest to fastest
 var performanceranking = [];
@@ -26,82 +22,36 @@ var performanceranking = [];
 //Ranking of all rows sorted from most frequent to least popular
 var popularranking = [];
 
-// When this code has already been executed a lot of it does not have to be executed again.
+//When this code has already been executed a lot of it does not have to be executed again. 
 var lazymode = false;
 
-//Has the traceformatter already run and is there an arry with button IDs stored?
-var arrayEl = document.getElementById("buttonIdsElement");
+//If the traceformatter has already run then there is an array with button IDs that is stored as an HTML element in the DOM. Set lazymode = true if any IDs can be extracted
+lazymode = extractButtonIdsFromDOM();
 
-if (arrayEl != null) {
-  let butttonIDsString = arrayEl.getAttribute("data-array");
-  buttonids = JSON.parse(butttonIDsString);
-  //When reopening a saved and formatted trace, lazymode is turned on
-  lazymode = buttonids.length > 0 ? true : false;
-}
+//Ensure basic UI elements and their eventlisteners
+initializeUIandEventListeners(lazymode);
 
-if(lazymode){
-  //Re-apply all eventlisteners to all starting and finishing elements
-  for (i = 0; i < buttonids.length; i++) {
-    var row = document.getElementById("s" + buttonids[i]);
-    row.addEventListener("click", toggleCollapseWrapper2);
-  }
-  console.log(
-    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
-  );
-}
+//Progess bar setup --
 
-//Only skip adding relevant UI elements when the trace has been formatted earlier
-if (!lazymode) {
-
-  // Add buttons to the DOM
-  addAllUIbuttons();
-
-  //Add the progress bar to the DOM
-  addProgressBarUI();
-
-  //Add line numbers to the rows of the trace content table
-  addLineNumbers();
-
-  //Prevent extreme horizontal widths when cells have a lot of content like long SQL queries
-  applyDefaultColumnWidth();
-}
-
-//Initialize the progress bar element in the global scope
+//Define the progress bar element in the global scope so it can be referred to by the functions updateProgressBar() and finishStep()
 const progressBar = document.querySelector(".progress-bar");
 
-//Set the initial number of finished steps
+//Set the initial number of finished steps in the global scope
 var numStepsFinished = 0;
 
-//Global variable for the number of steps that will be displayed by the progress bar
-//Step 1: Setup progressbar
-//Step 2: Scanning and matching
-//Step 3: Adding all buttons
+//Global variable for the number of steps that will be displayed by the progress bar while formatting
 var totalNumSteps = 3;
+//Step 1: Change UI
+//Step 2: Scanning and matching
+//Step 3: Add all buttons
 
-//Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
-addEventListenersToButtons();
-
-//Store all tables of the trace in an array
-const tables = document.querySelectorAll(".tracecontent>table");
-
-//Hide tables below the trace that are not required for most trace analysis
-if (hasTablesTooHide()) {
-  if (!lazymode) {
-    hideTables();
-
-    //Add a button to make them reappear if needed
-    addHideTableButton();
-  }
-  document.getElementById("hideTables").addEventListener("click", hideTables);
-}
-
-//Format automatically if there are less than 30.000 rows. Formatting for larger tables would lead to undesirably long loading times
+//If there are more than 30.000 rows do nothing since it would lead to undesirably long loading times
 if (tl < 30000 && !lazymode) {
+  //Scan the table with the trace information, find pairs of starting and finishing elements and add "buttons" to make them collapseable/expandable.
   scanTableFindMatchesAddButtons();
 }
 
-
-// FUNCTIONS
+//FUNCTIONS ----
 
 //Measure how long it takes to render the DOM and log it to the console
 function measureDOMLoadingDuration() {
@@ -121,8 +71,146 @@ function measureDOMLoadingDuration() {
   observer.observe({ type: "navigation" });
 }
 
+//Find the table the contains the actual trace data
+function findTable() {
+  var tableID = "trace-table";
+
+  //Try to find the actual trace content. The id only exists if it has been set by an earlier formatting so in most case it will be undefined
+  var t = document.getElementById(tableID);
+
+  //Table found with an id that has been set by a previous formatter
+  if (!(t == undefined)) {
+    return t;
+  }
+
+  //continue searching...
+
+  //The second table of an unformatted trace contains the actual trace info.
+  t = document.getElementsByTagName("table")[1];
+
+  //If no second table is found, the DOM does not conatain a trace
+  if (t == undefined) {
+    noTraceFoundError();
+  }
+
+  //Ensure that the first row of the found table contains the string "Trace"
+  if (!t.rows[0].textContent.includes("Trace")) {
+    noTraceFoundError();
+  }
+
+  //Set the id so the the next traceformatter can find the table immediatly
+  t.id = tableID;
+
+  return t;
+}
+
+//If no table exists that potentially contains trace info, throw an error
+function noTraceFoundError() {
+
+  //If we are on the trace overview page, replace the "Clear trace" link with a button
+  replaceClearButton();
+
+  throw new Error(
+    "NovuloTraceformatter has stopped: No table was found that could be formatted"
+  );
+}
+
+//Replaces the "Clear all current trace data" link with a button that clears the trace data.
+function replaceClearButton() {
+  var newBtnId = "clear-trace-btn";
+
+  var btn = document.getElementById(newBtnId);
+
+  if (btn) {
+    return;
+  }
+
+  var existingLink = document.querySelector(
+    ".tracecontent td .link"
+  ).parentElement;
+
+  if (existingLink) {
+    var newButton = document.createElement("button");
+    newButton.setAttribute(
+      "onclick",
+      "window.location.href='Trace.axd?clear=1'"
+    );
+    newButton.setAttribute("class", "clear-button");
+    newButton.id = "clear-trace-btn";
+    newButton.innerHTML = "Clear all current trace data 🗑️";
+
+    var newTd = document.createElement("td");
+    newTd.appendChild(newButton);
+
+    existingLink.parentNode.replaceChild(newButton, existingLink);
+  }
+}
+
+//If the traceformatter has already run then there is an array with button IDs that is stored as an HTML element in the DOM
+function extractButtonIdsFromDOM() {
+
+  var arrayEl = document.getElementById("buttonIdsElement");
+
+  //Do nothing if the element does not exist
+  if (arrayEl == null) {
+    return false;
+  }
+
+  //Get the JSON string from the DOM
+  let butttonIDsString = arrayEl.getAttribute("data-array");
+
+  //Fill the global buttonids variable with the ids.
+  buttonids = JSON.parse(butttonIDsString);
+
+  //Turn on lazymode when more than 0 button ids where found
+  return buttonids.length > 0 ? true : false;
+
+}
+
+//Ensure basic UI elements and their eventlisteners
+function initializeUIandEventListeners() {
+
+  //lazy mode = true when another traceformatter has already formatted the trace in the past
+  if (lazymode) {
+
+    //Re-apply all eventlisteners to all starting elements (green rows for collapsing/expanding)
+    reApplyEventListenersToStartingElements();
+
+  } else { //Only skip adding relevant UI elements when the trace has been formatted earlier
+    // Add buttons to the DOM
+    addAllUIButtons();
+
+    //Add the progress bar to the DOM
+    addProgressBarUI();
+
+    //Add line numbers to the rows of the trace content table
+    addLineNumbers();
+
+    //Prevent extreme horizontal widths when cells have a lot of content like long SQL queries
+    applyDefaultColumnWidth();
+
+  }
+
+  //Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
+  addEventListenersToUIButtons();
+
+  //Hide tables below the trace that are not required for most trace analysis
+  hideUnnecessaryTables();
+}
+
+//Re-apply all eventlisteners to all starting elements (green rows for collapsing/expanding)
+function reApplyEventListenersToStartingElements() {
+  for (i = 0; i < buttonids.length; i++) {
+    var row = document.getElementById("s" + buttonids[i]);
+    row.addEventListener("click", toggleCollapseWrapper2);
+  }
+  console.log(
+    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
+  );
+}
+
 //Add all buttons to the top of the screen
-function addAllUIbuttons() {
+function addAllUIButtons() {
   var node = document.createElement("div");
   node.id = "buttonwrapper";
 
@@ -131,9 +219,9 @@ function addAllUIbuttons() {
   var button2 = createButton("collapseAll", "▼ Collapse All", "none", "collapse");
   var button3 = createButton("JumptoError", "Jump to error 🚨");
   var button4 = createButton("JumpToSlowest", "Jump to slowest 🐌");
-  var button5 = createButton("topten", "Top twenty slowest 🥇");
+  var button5 = createButton("topten", "Top twenty slowest 🥇", "inline-block");
   var button6 = createButton("mostpopular", "Most popular 📸", "none");
-  var button7 = createButton("feedback", "Feedback 💌");
+  var button7 = createButton("feedback", "Feedback 💌", "inline-block");
 
   //Append all buttons to the wrapper element
   node.appendChild(button1);
@@ -163,7 +251,7 @@ function createButton(id, text, display = "none", className = "") {
 }
 
 //Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
-function addEventListenersToButtons() {
+function addEventListenersToUIButtons() {
   document.getElementById("JumptoError").addEventListener("click", jumpToError);
   document
     .getElementById("JumpToSlowest")
@@ -221,72 +309,8 @@ function openFeedbackMail() {
   window.location.href = mailtoUrl;
 }
 
-//Find the table the contains the actual trace data
-function findTable() {
-  var tableID = "trace-table";
-
-  //Try to find the actual trace content. The id only exists if it has been set by an earlier formatting so in most case it will be undefined
-  var t = document.getElementById(tableID);
-
-  if (!(t == undefined)) {
-    return t;
-  }
-
-  //The second table of an unformatted trace contains the actual trace info.
-  t = document.getElementsByTagName("table")[1];
-
-  if (t == undefined) {
-    return undefined;
-  }
-
-  if (!t.rows[0].textContent.includes("Trace")) {
-    return undefined;
-  }
-
-  //Set the id so the the next traceformatter can find the table immediatly
-  t.id = tableID;
-
-  return t;
-}
-
-//Replaces the "Clear all current trace data" link with a button that clears the trace data.
-function replaceClearButton() {
-  var newBtnId = "clear-trace-btn";
-
-  var btn = document.getElementById(newBtnId);
-
-  if (btn) {
-    return;
-  }
-
-  var existingLink = document.querySelector(
-    ".tracecontent td .link"
-  ).parentElement;
-
-  if (existingLink) {
-    var newButton = document.createElement("button");
-    newButton.setAttribute(
-      "onclick",
-      "window.location.href='Trace.axd?clear=1'"
-    );
-    newButton.setAttribute("class", "clear-button");
-    newButton.id = "clear-trace-btn";
-    newButton.innerHTML = "Clear all current trace data 🗑️";
-
-    var newTd = document.createElement("td");
-    newTd.appendChild(newButton);
-
-    existingLink.parentNode.replaceChild(newButton, existingLink);
-  }
-}
-
-//Array to store all pairs
-var StartingElements = [];
-var FinishElements = [];
-
-//Scan the whole table, find matches between process start and finish elements, then add buttons so they can be collapsed
+//Scan the whole table, find matches between process start and finish elements, then add buttons so they can be collapsed/expanded
 function scanTableFindMatchesAddButtons(evt) {
-
 
   // ----------- Step 1 ------------//
 
@@ -302,7 +326,7 @@ function scanTableFindMatchesAddButtons(evt) {
 
   finishStep(); //Step 1
 
-  // Nest in a timeout to ensure that the spinner and the loading bar are displayed correctly
+  // Nested in a timeout to ensure that the spinner and the loading bar are displayed correctly
   setTimeout(() => {
     // ----------- Step 2 ------------//
 
@@ -320,7 +344,7 @@ function scanTableFindMatchesAddButtons(evt) {
 
     finishStep(); //Step 2
 
-    // Nest in a timeout to ensure that the spinner and the loading bar are displayed correctly
+    //Nested in a timeout to ensure that the spinner and the loading bar are displayed correctly
     setTimeout(() => {
       // ----------- Step 3 ------------//
 
@@ -380,27 +404,27 @@ function scanTable(t, from, until) {
     //Second cel in row
     var t1 = tr.cells[1];
     //String in second cell
-    var tsinner = t1.innerHTML;
+    var t1innerHTML = t1.innerHTML;
 
-    var isStartingcell = tsinner.indexOf("Starting") > -1;
+    var isStartingCell = t1innerHTML.indexOf("Starting") > -1;
 
-    if (!isStartingcell) {
-      var isFinishcell = tsinner.indexOf("Finished") > -1;
+    if (!isStartingCell) {
+      var isFinishCell = t1innerHTML.indexOf("Finished") > -1;
 
-      if (!isFinishcell) {
+      if (!isFinishCell) {
         continue;
       }
     }
 
     //Extract and save process id as element id
-    var id = getID(tsinner);
+    var id = getID(t1innerHTML);
 
     //if the id is not valid, then continue
     if (!(id > 0)) {
       continue;
     }
 
-    if (isStartingcell) {
+    if (isStartingCell) {
       //merge row id and process id to unique string
       var sid = "s" + tr.rowIndex + "_" + id;
       //set as element id
@@ -412,7 +436,7 @@ function scanTable(t, from, until) {
       continue;
     }
 
-    if (isFinishcell) {
+    if (isFinishCell) {
       var FinishElement = [tr.rowIndex, id];
       FinishElements.push(FinishElement);
     }
@@ -421,9 +445,15 @@ function scanTable(t, from, until) {
 
 //Get the process ID at the end of a string
 function getID(string) {
+
+  if (string.length < 5) {
+    return "";
+  }
+
   var array = string.slice(-10).split("_");
   var last = array.length - 1;
   var id = parseInt(array[last]);
+
   return id;
 }
 
@@ -1044,6 +1074,7 @@ function getRanking() {
 
 //Let the background color of any element flash
 function addFlash(el) {
+
   //Add flash class
   el.classList.add("flash");
 
@@ -1051,6 +1082,13 @@ function addFlash(el) {
   el.style.animation = "none";
   el.offsetHeight; /* trigger a reflow */
   el.style.animation = null;
+
+  //Remove the class after 1 second to prevent double flashes after expanding
+  setTimeout(() => {
+    //Add flash class
+    el.classList.remove("flash");
+  }, 1500);
+
 }
 
 //Apply the color scale to a table cell depending on a calculated "fraction"
@@ -1431,30 +1469,51 @@ function jumpToError(evt) {
   }, 20); // <-- arbitrary number greater than the screen refresh rate
 }
 
-//Check if there are tables that need to be hidden
-function hasTablesTooHide() {
-  //Do nothing if less then 2 tables have been found
+//Hide tables below the trace that are not required for most trace analysis
+function hideUnnecessaryTables() {
+
+  //Store all tables of the trace in an array
+  let tables = document.querySelectorAll(".tracecontent>table");
+
+  //Exit if no unnecessary tables exist
   if (tables.length <= 2) {
-    //Return false so now button will be added to the DOM
-    return false;
+    return;
   }
-  return true;
+
+  //Get the existing button for toggling the visibility
+  var hideTablesBtn = document.getElementById("hideTables");
+
+  //Ensure a new button if needed
+  if (hideTablesBtn == null) {
+    //Add a button to make them reappear if needed
+    var node2 = document.createElement("div");
+    var button = "<button id='hideTables'>More info</button>";
+    node2.innerHTML = button;
+    table.parentNode.insertBefore(node2, table.nextSibling);
+    hideTablesBtn = document.getElementById("hideTables");
+
+    //Hide the currently visible tables below the trace that are not required for most trace analysis
+    toggleTablesVisibility(tables);
+  }
+
+  //(Re-) Apply eventlistener to the button
+  hideTablesBtn.addEventListener("click", function () {
+    toggleTablesVisibility(tables);
+  }, false);
+
 }
 
-//Hide the tables at the end of a trace that are barely used for analysis
-function hideTables() {
+//Hide/show tables starting from a position
+function toggleTablesVisibility(tables) {
+
+  if (tables == null) {
+    return;
+  }
+
   //Hide/Show all tables except the first two
   for (i = 2; i < tables.length; i++) {
     tables[i].classList.toggle("hidden");
   }
-}
-
-//Add HTML to the DOM to trigger hideTables()
-function addHideTableButton() {
-  var node2 = document.createElement("div");
-  var button = "<button id='hideTables'>More info</button>";
-  node2.innerHTML = button;
-  table.parentNode.insertBefore(node2, table.nextSibling);
 }
 
 //Add spinner to specified element
