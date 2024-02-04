@@ -1,35 +1,20 @@
-//Measure how long it takes to render the DOM
-// Create a new PerformanceObserver to monitor the "navigation" performance entry type.
-const observer = new PerformanceObserver((list) => {
-  // Get the first entry in the list. This will be the most recent navigation event.
-  const entry = list.getEntries()[0];
-  // Calculate the time it took for the DOM to load.
-  const domLoadTime = Math.ceil(entry.duration);
-  // Log the time to the console.
-  console.log(
-    `It took ${domLoadTime} milliseconds to load the trace without formatting.`
-  );
-});
+//SETUP ----
 
-// Start observing the "navigation" performance entry type.
-observer.observe({ type: "navigation" });
+//Measure how long it took to render the DOM and log it to the console
+measureDOMLoadingDuration();
 
-var table = findTable();
+//Find the table that contains the trace
+const table = findTable();
 
-//If no table exists that potentially contains trace info, throw an error
-if (table == undefined) {
-  //If we are on the trace overview page replace the link with a clear button
-  replaceClearButton();
+//Global const for the table length of the table that contains the trace information
+const tl = table.rows.length;
 
-  throw new Error(
-    "Traceformatter has stopped: No table found that can be formatted"
-  );
-}
-
-var tl = table.rows.length;
-
-//Declare a variable to store all buttonids for collapse / uncollapse all action
+//Declare a variable to store all buttonids for the collapse/uncollapse all actions
 var buttonids = [];
+
+//Array to store all pairs of starting elements (green rows) and finishing elements (red rows)
+var StartingElements = [];
+var FinishElements = [];
 
 //Ranking of all rows sorted from slowest to fastest
 var performanceranking = [];
@@ -37,172 +22,53 @@ var performanceranking = [];
 //Ranking of all rows sorted from most frequent to least popular
 var popularranking = [];
 
-// When this code has already been executed a lot of it does not have to be executed again.
+//When this code has already been executed a lot of it does not have to be executed again. 
 var lazymode = false;
 
-//Has the traceformatter already run and is there an arry with button IDs stored?
-var arrayEl = document.getElementById("buttonIdsElement");
+//If the traceformatter has already run then there is an array with button IDs that is stored as an HTML element in the DOM. Set lazymode = true if any IDs can be extracted
+lazymode = extractButtonIdsFromDOM();
 
-if (arrayEl != null) {
-  let butttonIDsString = arrayEl.getAttribute("data-array");
-  buttonids = JSON.parse(butttonIDsString);
-  //When reopening a saved and formatted trace, lazymode is turned on
-  lazymode = buttonids.length > 0 ? true : false;
-}
+//Ensure basic UI elements and their eventlisteners
+initializeUIandEventListeners(lazymode);
 
-//Skip adding the buttons when they are already present
-if (!lazymode) {
-  //Add buttons to the DOM
-  var node = document.createElement("div");
-  node.id = "buttonwrapper";
+//Progess bar setup --
 
-  var button0 = document.createElement("button");
-  button0.id = "JumptoError";
-  button0.style.display = "none";
-  button0.textContent = "Jump to error 🚨";
-
-  var button1 = document.createElement("button");
-  button1.id = "JumpToSlowest";
-  button1.style.display = "none";
-  button1.textContent = "Jump to slowest 🐌";
-
-  var button2 = document.createElement("button");
-  button2.id = "collapseAll";
-  button2.style.display = "none";
-  button2.className = "collapse";
-  button2.textContent = "▼ Collapse All";
-
-  var button3 = document.createElement("button");
-  button3.id = "buttontrigger";
-  button3.textContent = "Enable Collapsing";
-
-  var button4 = document.createElement("button");
-  button4.id = "topten";
-  button4.textContent = "Top twenty slowest 🥇";
-
-  var button5 = document.createElement("button");
-  button5.id = "mostpopular";
-  button5.style.display = "none";
-  button5.textContent = "Most popular 📸";
-
-  var button6 = document.createElement("button");
-  button6.id = "feedback";
-  button6.textContent = "Feedback 💌";
-
-  var buttonIdsElement = document.createElement("div");
-  buttonIdsElement.id = "buttonIdsElement";
-
-  node.appendChild(button3);
-  node.appendChild(button2);
-  node.appendChild(button0);
-  node.appendChild(button1);
-  node.appendChild(button4);
-  node.appendChild(button5);
-  node.appendChild(button6);
-  node.appendChild(button7);
-  node.appendChild(buttonIdsElement);
-
-  document.body.insertBefore(node, document.body.firstChild);
-
-  //Add the progress bar to the DOM
-  // Create the container element
-  const container = document.createElement("div");
-  container.classList.add("progress-bar-container");
-
-  // Create the progress bar element
-  const progressBar = document.createElement("div");
-  progressBar.classList.add("progress-bar");
-  progressBar.style.width = 0;
-
-  // Append the progress bar to the container
-  container.appendChild(progressBar);
-
-  // Insert the container into the document body
-  document.body.appendChild(container);
-
-  // Add line numbers to the rows of the trace content table
-  addLineNumbers();
-
-  //Prevent extreme horizontal widths when cells have a lot of content like long SQL queries
-  applyDefaultColumnWidth();
-}
-
-// Get the progress bar element
+//Define the progress bar element in the global scope so it can be referred to by the functions updateProgressBar() and finishStep()
 const progressBar = document.querySelector(".progress-bar");
 
-// Set the initial number of steps
+//Set the initial number of finished steps in the global scope
 var numStepsFinished = 0;
 
-//Is initialized as 0. Is set to the number of batches that are created in
-var totalNumSteps;
+//Global variable for the number of steps that will be displayed by the progress bar while formatting
+var totalNumSteps = 3;
+//Step 1: Change UI
+//Step 2: Scanning and matching
+//Step 3: Add all buttons
 
-//Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
-document.getElementById("JumptoError").addEventListener("click", jumpToError);
-document
-  .getElementById("JumpToSlowest")
-  .addEventListener("click", jumpToSlowest);
-document
-  .getElementById("buttontrigger")
-  .addEventListener("click", scanTableFindMatchesAddButtons);
-document
-  .getElementById("collapseAll")
-  .addEventListener("click", toggleCollapseExpandAll);
-document
-  .getElementById("topten")
-  .addEventListener("click", plotPerformanceTable);
-document
-  .getElementById("mostpopular")
-  .addEventListener("click", plotPopularTable);
-
-document.getElementById("feedback").addEventListener("click", openFeedbackMail);
-
-//Store all tables of the trace in an array
-const tables = document.querySelectorAll(".tracecontent>table");
-
-//Hide tables below the trace that are not required for most trace analysis
-if (hasTablesTooHide()) {
-  if (!lazymode) {
-    hideTables();
-
-    //Add a button to make them reappear if needed
-    addHideTableButton();
-  }
-  document.getElementById("hideTables").addEventListener("click", hideTables);
-}
-
-//Add buttons automatically if there are less than 30.000 rows
-//Adding buttons automatically for larger tables could otherwise lead to undesirable loading times
+//If there are more than 30.000 rows do nothing since it would lead to undesirably long loading times
 if (tl < 30000 && !lazymode) {
+  //Scan the table with the trace information, find pairs of starting and finishing elements and add "buttons" to make them collapseable/expandable.
   scanTableFindMatchesAddButtons();
 }
 
-if (lazymode) {
-  //Re-apply all eventlisteners to all starting and finishing elements
-  for (i = 0; i < buttonids.length; i++) {
-    var row = document.getElementById("s" + buttonids[i]);
-    row.addEventListener("click", toggleCollapseWrapper2);
-  }
-  console.log(
-    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
-  );
-}
+//FUNCTIONS ----
 
-function openFeedbackMail() {
-  var email = "traceformatter@joachimbatzke.com";
-  var subject = "Feedback";
-  var body =
-    "Dear Trace Formatter Team,\n\nI would like to provide the following feedback:\n\n";
+//Measure how long it takes to render the DOM and log it to the console
+function measureDOMLoadingDuration() {
+  // Create a new PerformanceObserver to monitor the "navigation" performance entry type.
+  const observer = new PerformanceObserver((list) => {
+    // Get the first entry in the list. This will be the most recent navigation event.
+    const entry = list.getEntries()[0];
+    // Calculate the time it took for the DOM to load.
+    const domLoadTime = Math.ceil(entry.duration);
+    // Log the time to the console.
+    console.log(
+      `It took ${domLoadTime} milliseconds to load the trace without formatting.`
+    );
+  });
 
-  // Encode the email subject and body to be included in the mailto URL
-  var encodedSubject = encodeURIComponent(subject);
-  var encodedBody = encodeURIComponent(body);
-
-  // Generate the mailto URL with the pre-filled subject and body
-  var mailtoUrl =
-    "mailto:" + email + "?subject=" + encodedSubject + "&body=" + encodedBody;
-
-  // Open the default email client with the pre-filled content
-  window.location.href = mailtoUrl;
+  // Start observing the "navigation" performance entry type.
+  observer.observe({ type: "navigation" });
 }
 
 //Find the table the contains the actual trace data
@@ -212,19 +78,24 @@ function findTable() {
   //Try to find the actual trace content. The id only exists if it has been set by an earlier formatting so in most case it will be undefined
   var t = document.getElementById(tableID);
 
+  //Table found with an id that has been set by a previous formatter
   if (!(t == undefined)) {
     return t;
   }
 
+  //continue searching...
+
   //The second table of an unformatted trace contains the actual trace info.
   t = document.getElementsByTagName("table")[1];
 
+  //If no second table is found, the DOM does not conatain a trace
   if (t == undefined) {
-    return undefined;
+    noTraceFoundError();
   }
 
+  //Ensure that the first row of the found table contains the string "Trace"
   if (!t.rows[0].textContent.includes("Trace")) {
-    return undefined;
+    noTraceFoundError();
   }
 
   //Set the id so the the next traceformatter can find the table immediatly
@@ -233,9 +104,18 @@ function findTable() {
   return t;
 }
 
-/**
- * Replaces the "Clear all current trace data" link with a button that clears the trace data.
- */
+//If no table exists that potentially contains trace info, throw an error
+function noTraceFoundError() {
+
+  //If we are on the trace overview page, replace the "Clear trace" link with a button
+  replaceClearButton();
+
+  throw new Error(
+    "NovuloTraceformatter has stopped: No table was found that could be formatted"
+  );
+}
+
+//Replaces the "Clear all current trace data" link with a button that clears the trace data.
 function replaceClearButton() {
   var newBtnId = "clear-trace-btn";
 
@@ -266,22 +146,178 @@ function replaceClearButton() {
   }
 }
 
-//Array to store all pairs
-var StartingElements = [];
-var FinishElements = [];
+//If the traceformatter has already run then there is an array with button IDs that is stored as an HTML element in the DOM
+function extractButtonIdsFromDOM() {
 
-//Scan the whole table, find matches between process start and finish elements, then add buttons so they can be collapsed
+  var arrayEl = document.getElementById("buttonIdsElement");
+
+  //Do nothing if the element does not exist
+  if (arrayEl == null) {
+    return false;
+  }
+
+  //Get the JSON string from the DOM
+  let butttonIDsString = arrayEl.getAttribute("data-array");
+
+  //Fill the global buttonids variable with the ids.
+  buttonids = JSON.parse(butttonIDsString);
+
+  //Turn on lazymode when more than 0 button ids where found
+  return buttonids.length > 0 ? true : false;
+
+}
+
+//Ensure basic UI elements and their eventlisteners
+function initializeUIandEventListeners() {
+
+  //lazy mode = true when another traceformatter has already formatted the trace in the past
+  if (lazymode) {
+
+    //Re-apply all eventlisteners to all starting elements (green rows for collapsing/expanding)
+    reApplyEventListenersToStartingElements();
+
+  } else { //Only skip adding relevant UI elements when the trace has been formatted earlier
+    // Add buttons to the DOM
+    addAllUIButtons();
+
+    //Add the progress bar to the DOM
+    addProgressBarUI();
+
+    //Add line numbers to the rows of the trace content table
+    addLineNumbers();
+
+    //Prevent extreme horizontal widths when cells have a lot of content like long SQL queries
+    applyDefaultColumnWidth();
+
+  }
+
+  //Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
+  addEventListenersToUIButtons();
+
+  //Hide tables below the trace that are not required for most trace analysis
+  hideUnnecessaryTables();
+}
+
+//Re-apply all eventlisteners to all starting elements (green rows for collapsing/expanding)
+function reApplyEventListenersToStartingElements() {
+  for (i = 0; i < buttonids.length; i++) {
+    var row = document.getElementById("s" + buttonids[i]);
+    row.addEventListener("click", toggleCollapseWrapper2);
+  }
+  console.log(
+    "Finished re-applying eventlisteners to all buttons for collapsing/expanding"
+  );
+}
+
+//Add all buttons to the top of the screen
+function addAllUIButtons() {
+  var node = document.createElement("div");
+  node.id = "buttonwrapper";
+
+  //Create all button elements
+  var button1 = createButton("buttontrigger", "Enable Collapsing");
+  var button2 = createButton("collapseAll", "▼ Collapse All", "none", "collapse");
+  var button3 = createButton("JumptoError", "Jump to error 🚨");
+  var button4 = createButton("JumpToSlowest", "Jump to slowest 🐌");
+  var button5 = createButton("topten", "Top twenty slowest 🥇", "inline-block");
+  var button6 = createButton("mostpopular", "Most popular 📸", "none");
+  var button7 = createButton("feedback", "Feedback 💌", "inline-block");
+
+  //Append all buttons to the wrapper element
+  node.appendChild(button1);
+  node.appendChild(button2);
+  node.appendChild(button3);
+  node.appendChild(button4);
+  node.appendChild(button5);
+  node.appendChild(button6);
+  node.appendChild(button7);
+
+  //Create an element to store the IDs of the buttons later, when the formatting is done
+  var buttonIdsElement = document.createElement("div");
+  buttonIdsElement.id = "buttonIdsElement";
+  node.appendChild(buttonIdsElement);
+
+  document.body.insertBefore(node, document.body.firstChild);
+}
+
+//Create a button element 
+function createButton(id, text, display = "none", className = "") {
+  var button = document.createElement("button");
+  button.id = id;
+  button.style.display = display;
+  button.className = className;
+  button.textContent = text;
+  return button;
+}
+
+//Add eventlisteners as functions cannot be called from the buttons themselves. The buttons are on the DOM and cannot access the scope of this .js file
+function addEventListenersToUIButtons() {
+  document.getElementById("JumptoError").addEventListener("click", jumpToError);
+  document
+    .getElementById("JumpToSlowest")
+    .addEventListener("click", jumpToSlowest);
+  document
+    .getElementById("buttontrigger")
+    .addEventListener("click", scanTableFindMatchesAddButtons);
+  document
+    .getElementById("collapseAll")
+    .addEventListener("click", toggleCollapseExpandAll);
+  document
+    .getElementById("topten")
+    .addEventListener("click", plotPerformanceTable);
+  document
+    .getElementById("mostpopular")
+    .addEventListener("click", plotPopularTable);
+
+  document.getElementById("feedback").addEventListener("click", openFeedbackMail);
+}
+
+//Initialize the UI elements for the progress bar in the DOM
+function addProgressBarUI() {
+  //Create the container element
+  const container = document.createElement("div");
+  container.classList.add("progress-bar-container");
+
+  //Create the progress bar element
+  const progressBar = document.createElement("div");
+  progressBar.classList.add("progress-bar");
+  progressBar.style.width = 0;
+
+  //Append the progress bar to the container
+  container.appendChild(progressBar);
+
+  //Insert the container into the document body
+  document.body.appendChild(container);
+}
+
+//Open a mailto url to open a mail program for writing a feedback email
+function openFeedbackMail() {
+  var email = "traceformatter@joachimbatzke.com";
+  var subject = "Feedback";
+  var body =
+    "Dear Trace Formatter Team,\n\nI would like to provide the following feedback:\n\n";
+
+  // Encode the email subject and body to be included in the mailto URL
+  var encodedSubject = encodeURIComponent(subject);
+  var encodedBody = encodeURIComponent(body);
+
+  // Generate the mailto URL with the pre-filled subject and body
+  var mailtoUrl =
+    "mailto:" + email + "?subject=" + encodedSubject + "&body=" + encodedBody;
+
+  // Open the default email client with the pre-filled content
+  window.location.href = mailtoUrl;
+}
+
+//Scan the whole table, find matches between process start and finish elements, then add buttons so they can be collapsed/expanded
 function scanTableFindMatchesAddButtons(evt) {
-  //Step 1: Setup progressbar
-  //Step 2: Scanning and matching
-  //Step 3: Adding all buttons
-  totalNumSteps = 3;
 
   // ----------- Step 1 ------------//
 
   console.time("Total formatting");
   document.getElementById("buttontrigger").disabled = true;
   document.getElementById("buttontrigger").innerHTML = "Enabling collapsing";
+
   if (evt != undefined) {
     var e = evt.target;
     e.disabled = true;
@@ -290,7 +326,7 @@ function scanTableFindMatchesAddButtons(evt) {
 
   finishStep(); //Step 1
 
-  // Timeout to ensure that the spinner is displayed correctly
+  // Nested in a timeout to ensure that the spinner and the loading bar are displayed correctly
   setTimeout(() => {
     // ----------- Step 2 ------------//
 
@@ -308,8 +344,10 @@ function scanTableFindMatchesAddButtons(evt) {
 
     finishStep(); //Step 2
 
-    // ----------- Step 3 ------------//
+    //Nested in a timeout to ensure that the spinner and the loading bar are displayed correctly
     setTimeout(() => {
+      // ----------- Step 3 ------------//
+
       //Add all buttons based on promises that resolve individually
       addAllButtonsPromise();
       //addButtons(buttonids);
@@ -322,24 +360,28 @@ function scanTableFindMatchesAddButtons(evt) {
   }, 10); // <-- arbitrary number greater than the screen refresh rate
 }
 
-//Hide the button that triggers enables collapsing, since it is not relevant anymore
+//Hide the button that enables collapsing, when it is not relevant anymore
 function hideTriggerUIShowAllbuttons() {
   document.getElementById("buttontrigger").style.display = "none";
   //If collapsable elements exist, enable the UI elements
-  if (buttonids.length > 0) {
-    //show the buttons
-    document.getElementById("collapseAll").setAttribute("style", "");
-    document.getElementById("JumptoError").setAttribute("style", "");
-    document.getElementById("JumpToSlowest").setAttribute("style", "");
-    document.getElementById("mostpopular").setAttribute("style", "");
-
-    // Convert the array to a string
-    let butttonIDsString = JSON.stringify(buttonids);
-    // Store the string in a data attribute of a DOM element so they can be reused when the trace is opened again
-    document
-      .getElementById("buttonIdsElement")
-      .setAttribute("data-array", butttonIDsString);
+  if (buttonids.length < 0) {
+    return;
   }
+  //show the buttons
+  document.getElementById("collapseAll").setAttribute("style", "");
+  document.getElementById("JumptoError").setAttribute("style", "");
+  document.getElementById("JumpToSlowest").setAttribute("style", "");
+  document.getElementById("mostpopular").setAttribute("style", "");
+}
+
+//Store the button ids (start and end pairs) in the DOM. This way the ids can be extracted and reused when the trace html file is reopend again 
+function storeButtonIds() {
+  // Convert the id array to a string
+  let butttonIDsString = JSON.stringify(buttonids);
+  // Store the string in a data attribute of a DOM element so they can be reused when the trace is opened again
+  document
+    .getElementById("buttonIdsElement")
+    .setAttribute("data-array", butttonIDsString);
 }
 
 //Scan the whole table and fill the global variables with starting and finishing elements
@@ -362,27 +404,27 @@ function scanTable(t, from, until) {
     //Second cel in row
     var t1 = tr.cells[1];
     //String in second cell
-    var tsinner = t1.innerHTML;
+    var t1innerHTML = t1.innerHTML;
 
-    var isStartingcell = tsinner.indexOf("Starting") > -1;
+    var isStartingCell = t1innerHTML.indexOf("Starting") > -1;
 
-    if (!isStartingcell) {
-      var isFinishcell = tsinner.indexOf("Finished") > -1;
+    if (!isStartingCell) {
+      var isFinishCell = t1innerHTML.indexOf("Finished") > -1;
 
-      if (!isFinishcell) {
+      if (!isFinishCell) {
         continue;
       }
     }
 
     //Extract and save process id as element id
-    var id = getID(tsinner);
+    var id = getID(t1innerHTML);
 
     //if the id is not valid, then continue
     if (!(id > 0)) {
       continue;
     }
 
-    if (isStartingcell) {
+    if (isStartingCell) {
       //merge row id and process id to unique string
       var sid = "s" + tr.rowIndex + "_" + id;
       //set as element id
@@ -394,7 +436,7 @@ function scanTable(t, from, until) {
       continue;
     }
 
-    if (isFinishcell) {
+    if (isFinishCell) {
       var FinishElement = [tr.rowIndex, id];
       FinishElements.push(FinishElement);
     }
@@ -403,9 +445,15 @@ function scanTable(t, from, until) {
 
 //Get the process ID at the end of a string
 function getID(string) {
+
+  if (string.length < 5) {
+    return "";
+  }
+
   var array = string.slice(-10).split("_");
   var last = array.length - 1;
   var id = parseInt(array[last]);
+
   return id;
 }
 
@@ -491,9 +539,9 @@ function findMatch(processIdStart) {
     ) {
       console.log(
         "Could not find the finish element for s" +
-          StartingElements[i][0] +
-          "_" +
-          StartingElements[i][1]
+        StartingElements[i][0] +
+        "_" +
+        StartingElements[i][1]
       );
       //Get the cell of the failed process and highlight it red
       var unfinishedProcess = document.getElementById(
@@ -552,8 +600,10 @@ function addAllButtonsPromise() {
     });
 }
 
+//Execute the actions after a succesfully adding collapsable buttons to all required rows
 function allButtonPromisesResolved() {
   hideTriggerUIShowAllbuttons();
+  storeButtonIds();
   finishStep(); //Step 3
   console.timeEnd("Total formatting");
 }
@@ -642,41 +692,6 @@ function toggleCollapseExpandAll(evt) {
   collapseExpandAll(collapseExpand);
 }
 
-/*
-//Collapse all rows of the table starting with the last. Input is either the string "collapse" or "expand".
-function collapseExpandAll(collapseExpand) {
-  var bl = buttonids.length;
-
-  const timerlabel = collapseExpand + " " + bl + " items";
-
-  console.time(timerlabel);
-
-  //Update the progress bar for every x buttons
-  var x = 100;
-  totalNumSteps = Math.round(bl / x);
-
-  if (collapseExpand == "collapse") {
-    //Loop through the array of all buttons and "press" each button from bottom to top
-    for (l = bl - 1; l >= 0; l--) {
-      toggleCollapse(buttonids[l], collapseExpand);
-      if (l % x == 0) {
-        finishStep();
-      }
-    }
-
-  } else if (collapseExpand == "expand") {
-    //Loop through the array of all buttons and "press" each button from top to bottom
-    for (l = 0; l < bl - 1; l++) {
-      toggleCollapse(buttonids[l], collapseExpand);
-    }
-    if (l % x == 0) {
-      finishStep();
-    }
-  }
-  console.timeEnd(timerlabel);
-}
-*/
-
 //Collapse or expand all rows of the table. Input is either the string "collapse" or "expand".
 function collapseExpandAll(collapseExpand) {
   //Log the total time of collapsing/expanding items
@@ -697,31 +712,6 @@ function collapseExpandAll(collapseExpand) {
     console.timeEnd(timerlabel);
     return;
 
-    /* OLD approach where the expanding happened per button. That was slow.
-    var batchIndex = 0;
-    var batchSize = x;
-    var batchCount = Math.ceil(bl / x);
-    var l = 0;
-
-    var expandBatchLoop = function () {
-      for (var i = 0; i < batchSize && l < bl; i++, l++) {
-        toggleCollapse(buttonids[l], collapseExpand);
-      }
-      finishStep();
-      batchIndex++;
-      if (batchIndex < batchCount) {
-        //Trigger next batch in 0 ms
-        setTimeout(expandBatchLoop, 0);
-      } else {
-        //All batches finished
-        enableButton("collapseAll");
-        console.timeEnd(timerlabel);
-      }
-    };
-
-    //Intialize recursion
-    expandBatchLoop();
-*/
   }
 }
 
@@ -833,6 +823,7 @@ function toggleCollapseWrapper(evt) {
 function toggleCollapseWrapper2(evt) {
   //console.log(evt.target);
   var id = evt.target.parentElement.id;
+
   if (id == "") {
     id = evt.target.parentElement.parentElement.id;
   }
@@ -843,9 +834,11 @@ function toggleCollapseWrapper2(evt) {
 
 //Collapse or expand rows
 function toggleCollapse(id, collapseExpand) {
+
   if (id === null || id === undefined || id === "") {
     return;
   }
+
   var sid = "s" + id;
   var start = document.getElementById(sid);
   var startcell = start.cells[1].getElementsByTagName("span")[1];
@@ -874,7 +867,7 @@ function toggleCollapse(id, collapseExpand) {
   }
 }
 
-//expand cells for a single startcell
+//Expand cells for a single startcell
 function expand(start, startcell, rowcount, startIndex) {
   //Show the start element again in case it was hidden
   start.classList.remove("hidden");
@@ -897,7 +890,7 @@ function expand(start, startcell, rowcount, startIndex) {
   start.classList.remove("collapsed");
 }
 
-//collapse rows for a single startcell
+//Collapse rows for a single startcell
 function collapse(startcell, rowcount, startIndex, start) {
   //switch the triangle
   startcell.innerHTML = "&#9658;" + startcell.innerHTML.slice(1);
@@ -930,24 +923,25 @@ function noOfRows(id) {
   var start = document.getElementById(sid);
   var finish = document.getElementById(fid);
 
-  if (start != null && finish != null) {
-    //get positions
-    var startIndex = start.rowIndex;
-    var finishIndex = finish.rowIndex;
-
-    var noOfRows = finishIndex - startIndex;
-
-    if (noOfRows <= 0) {
-      console.log("Something is messed up with sid " + sid + " and fid " + fid);
-      return 0;
-    }
-    return noOfRows;
-  } else {
+  if (start == null || finish == null) {
     return undefined;
   }
+
+  //get positions
+  var startIndex = start.rowIndex;
+  var finishIndex = finish.rowIndex;
+
+  var noOfRows = finishIndex - startIndex ?? 0;
+
+  if (noOfRows <= 0) {
+    console.log("Something is messed up with sid " + sid + " and fid " + fid);
+    return 0;
+  }
+  return noOfRows;
+
 }
 
-// Scroll to the position of the slowest row, triggered by the dedicated button
+//Scroll to the position of the slowest row, triggered by the dedicated button
 function jumpToSlowest(evt) {
   //The button that triggered the function
   var e = evt.target;
@@ -987,13 +981,6 @@ function jumpToSlowPos(pos) {
 
   slowposEl = document.getElementById(posid);
 
-  /* Replaced by 
-  //Color the whole row in the color of the slow row element
-  applyPerformanceStyle(
-    slowposEl.parentElement.cells[1],
-    performanceranking[pos][0] * 10
-  );
-*/
   jumpToId(posid, slowposEl.parentElement);
 }
 
@@ -1007,24 +994,24 @@ function jumpToTriggerSid(evt) {
   //Expand all rows first so that the slow row will be visible with 100% certanty
   collapseExpandAll("expand");
 
-  var newsid = "";
+  var newSid = "";
 
   if (
     !trigger.classList.contains("prev") &&
     !trigger.classList.contains("next")
   ) {
-    newsid = popularranking[pos].sids[0];
+    newSid = popularranking[pos].sids[0];
   }
 
   if (trigger.classList.contains("prev")) {
-    newsid = getPrevsid(pos, sid);
+    newSid = getPrevsid(pos, sid);
   }
 
   if (trigger.classList.contains("next")) {
-    newsid = getNextsid(pos, sid);
+    newSid = getNextsid(pos, sid);
   }
-  tr.setAttribute("data-sid", newsid);
-  jumpToId(newsid);
+  tr.setAttribute("data-sid", newSid);
+  jumpToId(newSid);
 }
 
 //Jump to a specific starting element based on the starting id (sid)
@@ -1085,8 +1072,9 @@ function getRanking() {
   return newranking;
 }
 
-//let the background of any element flash
+//Let the background color of any element flash
 function addFlash(el) {
+
   //Add flash class
   el.classList.add("flash");
 
@@ -1094,6 +1082,13 @@ function addFlash(el) {
   el.style.animation = "none";
   el.offsetHeight; /* trigger a reflow */
   el.style.animation = null;
+
+  //Remove the class after 1 second to prevent double flashes after expanding
+  setTimeout(() => {
+    //Add flash class
+    el.classList.remove("flash");
+  }, 1500);
+
 }
 
 //Apply the color scale to a table cell depending on a calculated "fraction"
@@ -1429,8 +1424,10 @@ function addSidToSortedArray(array) {
   return array;
 }
 
+//Get the cell with the content "Took xx ms", after the finish row
 function getTook(buttonId) {
-  //Get the cell with the content "Took xx ms", after the finish row
+
+  //Get the table cell
   var tc =
     table.rows[document.getElementById("f" + buttonId).rowIndex + 1].cells[1];
 
@@ -1472,30 +1469,51 @@ function jumpToError(evt) {
   }, 20); // <-- arbitrary number greater than the screen refresh rate
 }
 
-//Check if there are tables that need to be hidden
-function hasTablesTooHide() {
-  //Do nothing if less then 2 tables have been found
+//Hide tables below the trace that are not required for most trace analysis
+function hideUnnecessaryTables() {
+
+  //Store all tables of the trace in an array
+  let tables = document.querySelectorAll(".tracecontent>table");
+
+  //Exit if no unnecessary tables exist
   if (tables.length <= 2) {
-    //Return false so now button will be added to the DOM
-    return false;
+    return;
   }
-  return true;
+
+  //Get the existing button for toggling the visibility
+  var hideTablesBtn = document.getElementById("hideTables");
+
+  //Ensure a new button if needed
+  if (hideTablesBtn == null) {
+    //Add a button to make them reappear if needed
+    var node2 = document.createElement("div");
+    var button = "<button id='hideTables'>More info</button>";
+    node2.innerHTML = button;
+    table.parentNode.insertBefore(node2, table.nextSibling);
+    hideTablesBtn = document.getElementById("hideTables");
+
+    //Hide the currently visible tables below the trace that are not required for most trace analysis
+    toggleTablesVisibility(tables);
+  }
+
+  //(Re-) Apply eventlistener to the button
+  hideTablesBtn.addEventListener("click", function () {
+    toggleTablesVisibility(tables);
+  }, false);
+
 }
 
-//Hide the tables at the end of a trace that are barely used for analysis
-function hideTables() {
+//Hide/show tables starting from a position
+function toggleTablesVisibility(tables) {
+
+  if (tables == null) {
+    return;
+  }
+
   //Hide/Show all tables except the first two
   for (i = 2; i < tables.length; i++) {
     tables[i].classList.toggle("hidden");
   }
-}
-
-//Add HTML to the DOM to trigger hideTables()
-function addHideTableButton() {
-  var node2 = document.createElement("div");
-  var button = "<button id='hideTables'>More info</button>";
-  node2.innerHTML = button;
-  table.parentNode.insertBefore(node2, table.nextSibling);
 }
 
 //Add spinner to specified element
@@ -1529,7 +1547,7 @@ function splitContent(td, string) {
   td.appendChild(node2);
 }
 
-// Function to update the progress bar
+//Update the progress bar UI at the top of the screen
 function updateProgressBar() {
   // Calculate the percentage of steps finished
   const percentComplete = (numStepsFinished / totalNumSteps) * 100;
@@ -1582,13 +1600,17 @@ function finishStep() {
   }, 500); //Progress bar stays visible for a short time after finishing
 }
 
+//Add line numbers to each line of the table that contains the actual trace
 function addLineNumbers() {
+  //Set the name of the column
   table.rows[1].cells[0].innerText = "#";
+  //Update each line with the correct number
   for (i = 2; i < tl; i++) {
     table.rows[i].cells[0].innerText = i - 1 + ".";
   }
 }
 
+//Ensure that the width of the relevant columns in the trace is set so that the trace becomes more readable. It prevents undesired resizing based on the cell contents
 function applyDefaultColumnWidth() {
   //Set the colspan of the first th cell from 10 to 4
   table.rows[0].cells[0].colSpan = 4;
@@ -1611,4 +1633,3 @@ function applyDefaultColumnWidth() {
 
   table.style.tableLayout = "fixed";
 }
-
