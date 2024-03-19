@@ -9,12 +9,14 @@ const table = findTable();
 //Global const for the table length of the table that contains the trace information
 const tl = table.rows.length;
 
+const MAX_ROWS_FOR_PROCESSING = 30000;
+
 //Declare a variable to store all buttonids for the collapse/uncollapse all actions
 var buttonids = [];
 
 //Array to store all pairs of starting elements (green rows) and finishing elements (red rows)
-var StartingElements = [];
-var FinishElements = [];
+var startElements = [];
+var finishElements = [];
 
 //Ranking of all rows sorted from slowest to fastest
 var performanceranking = [];
@@ -46,7 +48,7 @@ var totalNumSteps = 3;
 //Step 3: Add all buttons
 
 //If there are more than 30.000 rows do nothing since it would lead to undesirably long loading times
-if (tl < 30000 && !lazymode) {
+if (tl < MAX_ROWS_FOR_PROCESSING && !lazymode) {
   //Scan the table with the trace information, find pairs of starting and finishing elements and add "buttons" to make them collapseable/expandable.
   scanTableFindMatchesAddButtons();
 }
@@ -335,11 +337,11 @@ function scanTableFindMatchesAddButtons(evt) {
     scanTable(table, 2, tl);
     console.timeEnd("Scan " + tl + " rows");
 
-    console.time("Match " + StartingElements.length + " start and finish rows");
+    console.time("Match " + startElements.length + " start and finish rows");
     //find matches between all starting and finishing elements
     findMatches();
     console.timeEnd(
-      "Match " + StartingElements.length + " start and finish rows"
+      "Match " + startElements.length + " start and finish rows"
     );
 
     finishStep(); //Step 2
@@ -432,13 +434,13 @@ function scanTable(t, from, until) {
       //create a new StartingElement for the row and the process id. The rowindex of the matching "finish" element is left empty
       var StartingElement = [tr.rowIndex, id, 0];
       //add it to the list of StartingElements
-      StartingElements.push(StartingElement);
+      startElements.push(StartingElement);
       continue;
     }
 
     if (isFinishCell) {
       var FinishElement = [tr.rowIndex, id];
-      FinishElements.push(FinishElement);
+      finishElements.push(FinishElement);
     }
   }
 }
@@ -460,38 +462,38 @@ function getID(string) {
 //Find a matching finishing element for all starting elements
 function findMatches() {
   //for each StartingElement in the array
-  for (h = 0; h < StartingElements.length; h++) {
+  for (h = 0; h < startElements.length; h++) {
     //only if the pair does not have a rowindex for the finish element yet
-    if (StartingElements[h][2] != 0) {
+    if (startElements[h][2] != 0) {
       continue;
     }
     //find match for the starting element
-    findMatch(StartingElements[h][1]);
+    findMatch(startElements[h][1]);
   }
 }
 
 //Find a matching finishing element for a single starting element
 function findMatch(processIdStart) {
   //find the next occurence of a pair with the same process id by searching backwards in the array
-  for (i = StartingElements.length - 1; i >= 0; i--) {
+  for (i = startElements.length - 1; i >= 0; i--) {
     //has another pair been found with the same process id?
     //It should have no row index set for the finish element
     if (
-      StartingElements[i][1] != processIdStart ||
-      StartingElements[i][2] != 0
+      startElements[i][1] != processIdStart ||
+      startElements[i][2] != 0
     ) {
       continue;
     }
 
     //this is the last occurence of the process ID in the StartingElements array. We need to find a matching finish element for it now.
-    var lastStartingElementrowIndex = StartingElements[i][0];
+    var lastStartingElementrowIndex = startElements[i][0];
 
-    for (j = 0; j < FinishElements.length; j++) {
+    for (j = 0; j < finishElements.length; j++) {
       //Match based on ID found?
-      if (processIdStart != FinishElements[j][1]) {
+      if (processIdStart != finishElements[j][1]) {
         continue;
       }
-      var rowIndexFinishElement = FinishElements[j][0];
+      var rowIndexFinishElement = finishElements[j][0];
 
       //is the row index of the starting element lower than the one of the finishing element? Or does the potential match appear lower in the list?
       if (lastStartingElementrowIndex >= rowIndexFinishElement) {
@@ -503,7 +505,7 @@ function findMatch(processIdStart) {
       //set it as the id of the html element
       table.rows[rowIndexFinishElement].id = fid;
       //store the row index of the found finished-element in the pair[]
-      StartingElements[i][2] = rowIndexFinishElement;
+      startElements[i][2] = rowIndexFinishElement;
 
       /*
       console.log(
@@ -524,7 +526,7 @@ function findMatch(processIdStart) {
       buttonids.push(buttonid);
 
       //A match has been found an correctly processed for FinishElements[j]. Therefore it can be removed from the arrray
-      FinishElements.splice(j, 1);
+      finishElements.splice(j, 1);
 
       //Exit the for loop to continue searching for the next StartingElement
       break;
@@ -533,23 +535,23 @@ function findMatch(processIdStart) {
     }
     //if the row index of the finish element could not be set after looking at all of the relevant FinishElements
     if (
-      StartingElements[i][2] == 0 ||
-      StartingElements[i][2] == undefined ||
-      StartingElements[i][2] == null
+      startElements[i][2] == 0 ||
+      startElements[i][2] == undefined ||
+      startElements[i][2] == null
     ) {
       console.log(
         "Could not find the finish element for s" +
-        StartingElements[i][0] +
+        startElements[i][0] +
         "_" +
-        StartingElements[i][1]
+        startElements[i][1]
       );
       //Get the cell of the failed process and highlight it red
       var unfinishedProcess = document.getElementById(
-        "s" + StartingElements[i][0] + "_" + StartingElements[i][1]
+        "s" + startElements[i][0] + "_" + startElements[i][1]
       );
       unfinishedProcess.cells[1].style.color = "red";
       //set it to -1 to indicate that nothing was found
-      StartingElements[i][2] = -1;
+      startElements[i][2] = -1;
     }
   }
 }
@@ -790,10 +792,10 @@ function expandRows(from, until) {
 
 //Switch the triangles
 function switchTrianglesExpand() {
-  console.log("Startingelements: " + StartingElements.length);
-  for (i = 0; i < StartingElements.length; i++) {
+  console.log("Startingelements: " + startElements.length);
+  for (i = 0; i < startElements.length; i++) {
     var startcell =
-      table.rows[StartingElements[i][0]].cells[1].querySelector("span.start");
+      table.rows[startElements[i][0]].cells[1].querySelector("span.start");
     startcell.innerHTML = "&#9660;" + startcell.innerHTML.slice(1);
     startcell.parentElement.parentElement.classList.remove("collapsed");
   }
@@ -1170,7 +1172,7 @@ function plotPopularTable() {
   }
 
   //Update the global variable of the popularity based on all starting elements
-  popularranking = countAndSortIds(StartingElements);
+  popularranking = countAndSortIds(startElements);
 
   //Declare a new table + headers to display the data from countAndSortIds()
   var poptable = document.createElement("table");
@@ -1371,9 +1373,9 @@ function countAndSortIds(arr) {
 //Add the sids of all processes to the sorted array to enable navigation between them
 function addSidToSortedArray(array) {
   // Loop through the StartingElements array
-  for (let i = 0; i < StartingElements.length; i++) {
-    let rowIndex = StartingElements[i][0];
-    let processId = StartingElements[i][1];
+  for (let i = 0; i < startElements.length; i++) {
+    let rowIndex = startElements[i][0];
+    let processId = startElements[i][1];
 
     let processIndex = -1;
 
