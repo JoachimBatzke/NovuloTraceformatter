@@ -1,8 +1,8 @@
-body {
+body.traceformatter-was-here {
   font-family: arial, sans-serif;
 }
 
-.progress-bar-container {
+body.traceformatter-was-here .progress-bar-container {
   position: fixed;
   top: 0;
   width: 100%;
@@ -10,23 +10,23 @@ body {
   margin-left: -8px;
 }
 
-.progress-bar {
+body.traceformatter-was-here .progress-bar {
   height: 100%;
   background-color: #81b668;
   /*transition: width 0.1s ease-out;*/
 }
 
-body .hidden {
+body.traceformatter-was-here .hidden {
   display: none;
 }
-body #ranking {
+body.traceformatter-was-here #ranking {
   right: 284px;
 }
-body #popular {
+body.traceformatter-was-here #popular {
   right: 144px;
 }
-body #ranking,
-body #popular {
+body.traceformatter-was-here #ranking,
+body.traceformatter-was-here #popular {
   position: fixed;
   background-color: white;
   top: 60px;
@@ -35,55 +35,55 @@ body #popular {
     0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
   border-radius: 3px;
 }
-body #ranking .header,
-body #popular .header {
+body.traceformatter-was-here #ranking .header,
+body.traceformatter-was-here #popular .header {
   font-weight: bold;
 }
-body #ranking td,
-body #popular td {
+body.traceformatter-was-here #ranking td,
+body.traceformatter-was-here #popular td {
   max-width: 300px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 2px 10px;
 }
-body #popular td.freq {
+body.traceformatter-was-here #popular td.freq {
   text-align: center;
 }
-body #popular td.took {
+body.traceformatter-was-here #popular td.took {
   text-align: right;
 }
-body #popular td .next,
-body #popular td .prev {
+body.traceformatter-was-here #popular td .next,
+body.traceformatter-was-here #popular td .prev {
   padding: 3px 10px;
   cursor: pointer;
   user-select: none;
 }
-body #popular td .next:hover,
-body #popular td .prev:hover {
+body.traceformatter-was-here #popular td .next:hover,
+body.traceformatter-was-here #popular td .prev:hover {
   background-color: rgba(0, 0, 0, 0.2);
 }
-body span.tracecontent a,
-body span.tracecontent a.link,
-a {
+body.traceformatter-was-here span.tracecontent a,
+body.traceformatter-was-here span.tracecontent a.link,
+body.traceformatter-was-here a {
   color: rgb(47, 133, 212);
   text-decoration: none;
 }
-body span.tracecontent a:hover,
-a:hover {
+body.traceformatter-was-here span.tracecontent a:hover,
+body.traceformatter-was-here a:hover {
   color: rgb(47, 133, 212);
   text-decoration: underline;
   cursor: pointer;
 }
 
-body #buttonwrapper {
+body.traceformatter-was-here #buttonwrapper {
   position: fixed;
   right: 0px;
   top: 20px;
 }
 
-body #buttonwrapper button,
-body #clear-trace-btn {
+body.traceformatter-was-here #buttonwrapper button,
+body.traceformatter-was-here #clear-trace-btn {
   cursor: pointer;
   margin-right: 20px;
   line-height: 30px;
@@ -92,20 +92,20 @@ body #clear-trace-btn {
     0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
 }
 
-body span.tracecontent tr button {
+body.traceformatter-was-here span.tracecontent tr button {
   white-space: nowrap;
 }
 
-body span.tracecontent h3 {
+body.traceformatter-was-here span.tracecontent h3 {
   line-height: 30px;
   margin: 0px 0px 0px 0px;
 }
 
-body span.tracecontent th {
+body.traceformatter-was-here span.tracecontent th {
   padding: 0px 8px 0px 8px;
 }
 
-body
+body.traceformatter-was-here
   span.tracecontent
   #trace-table
   tr:not(:first-child):not(:nth-child(2))
@@ -114,13 +114,13 @@ body
 }
 
 /*Wrap overflow text in the second column*/
-body span.tracecontent tr td:nth-child(2) {
+body.traceformatter-was-here span.tracecontent tr td:nth-child(2) {
   word-wrap: break-word;
 }
 
 /*Hide Overflow text in the third and fourth column*/
-body span.tracecontent tr td:nth-child(3),
-body span.tracecontent tr td:nth-child(4) {
+body.traceformatter-was-here span.tracecontent tr td:nth-child(3),
+body.traceformatter-was-here span.tracecontent tr td:nth-child(4) {
   padding-right: 10px;
   white-space: nowrap;
   overflow: hidden;
@@ -141,22 +141,22 @@ body span.tracecontent tr td:nth-child(4) {
 }
 
 /* Apply the animation to the table row */
-body span.tracecontent tr.flash {
+body.traceformatter-was-here span.tracecontent tr.flash {
   animation: flash 1s ease-in-out;
 }
 
-body span.tracecontent tr.collapsed td span.start {
+body.traceformatter-was-here span.tracecontent tr.collapsed td span.start {
   background-color: rgba(112, 177, 58, 0.7);
   /*height: 30px;
   line-height: 30px;*/
   font-weight: bolder;
 }
 
-body span.tracecontent tr td span.finish {
+body.traceformatter-was-here span.tracecontent tr td span.finish {
   background-color: rgba(225, 133, 133, 0.5);
 }
 
-body span.tracecontent td span.start {
+body.traceformatter-was-here span.tracecontent td span.start {
   cursor: pointer;
   background-color: rgba(112, 177, 58, 0.5);
   /*height: 20px;
@@ -165,28 +165,28 @@ body span.tracecontent td span.start {
   padding: 0 8px 0 8px;
 }
 
-body span.tracecontent tr:hover td span.start {
+body.traceformatter-was-here span.tracecontent tr:hover td span.start {
   background: rgba(112, 177, 58, 0.7);
 }
 
-body span.tracecontent tr:hover td span.start:active {
+body.traceformatter-was-here span.tracecontent tr:hover td span.start:active {
   background: rgba(112, 177, 58, 0.9);
 }
 
-body tr td.error {
+body.traceformatter-was-here tr td.error {
   color: red;
 }
 
-#firstError {
+body.traceformatter-was-here #firstError {
   background-color: red;
   color: white;
 }
 
-#hideTables {
+body.traceformatter-was-here #hideTables {
   margin-bottom: 24px;
 }
 
-.spinner {
+body.traceformatter-was-here .spinner {
   border-radius: 50%;
   border-top: 2px solid #000;
   width: 16px;
@@ -220,48 +220,48 @@ body tr td.error {
 /*Darkmode*/
 
 @media (prefers-color-scheme: dark) {
-  body {
+  body.traceformatter-was-here {
     background-color: #000000;
     color: rgba(255, 255, 255, 0.8);
   }
-  body #ranking,
-  body #popular {
+  body.traceformatter-was-here #ranking,
+  body.traceformatter-was-here #popular {
     background-color: #000;
   }
-  body #popular td .next:hover,
-  body #popular td .prev:hover {
+  body.traceformatter-was-here #popular td .next:hover,
+  body.traceformatter-was-here #popular td .prev:hover {
     background-color: rgba(255, 255, 255, 0.2);
   }
-  body span.tracecontent {
+  body.traceformatter-was-here span.tracecontent {
     background-color: #000;
   }
-  body span.tracecontent b,
-  body span.tracecontent {
+  body.traceformatter-was-here span.tracecontent b,
+  body.traceformatter-was-here span.tracecontent {
     color: rgba(255, 255, 255, 0.8);
   }
-  body span.tracecontent tr.subhead {
+  body.traceformatter-was-here span.tracecontent tr.subhead {
     background-color: #202020;
   }
-  body span.tracecontent th.alt,
-  body span.tracecontent th.alt b {
+  body.traceformatter-was-here span.tracecontent th.alt,
+  body.traceformatter-was-here span.tracecontent th.alt b {
     background-color: rgb(77, 77, 77);
   }
-  body span.tracecontent td {
+  body.traceformatter-was-here span.tracecontent td {
     color: rgba(255, 255, 255, 0.8);
   }
-  body span.tracecontent tr.alt {
+  body.traceformatter-was-here span.tracecontent tr.alt {
     background-color: #202020;
   }
-  body span.tracecontent a,
-  a,
-  body span.tracecontent a:hover,
-  a:hover {
+  body.traceformatter-was-here span.tracecontent a,
+  body.traceformatter-was-here a,
+  body.traceformatter-was-here span.tracecontent a:hover,
+  body.traceformatter-was-here a:hover {
     color: rgb(139, 196, 250);
   }
-  body span.tracecontent td.performance {
+  body.traceformatter-was-here span.tracecontent td.performance {
     color: black;
   }
-  body span.tracecontent hr {
+  body.traceformatter-was-here span.tracecontent hr {
     color: white;
   }
 }
