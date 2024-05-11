@@ -2,11 +2,10 @@
 This code helps developers and application owners of Novulo web applications to find and open the underlying components/models quickly.
 */
 
-//Global variables
-var componentData = []; //Data about all components in the application
 
-//Is required for injection into iFrames
-const customCss = '.architect-link {  display: none;}.enable-architect-links .formrow:hover .architect-link,.enable-architect-links .gridpanel:hover .architect-link  {  z-index: 1000000;  background-color: white;  height: 24px;  text-indent: 30px;  position: absolute;    border-radius: 3px;  background-position: -18px -3138px;  display: block;  line-height: 24px;  padding-right: 4px;  color: rgba(33, 46, 63, 1);  box-shadow:    0px 2px 4px -1px rgba(0, 0, 0, .2),    0px 4px 5px 0px rgba(0, 0, 0, .14),    0px 1px 10px 0px rgba(0, 0, 0, .12);}.enable-architect-links .formrow:hover .architect-link {  left: 0px;}.enable-architect-links .gridpanel:hover .architect-link {  left: 8px;  top: 8px;}.enable-architect-links .formrow .architect-link:hover,.enable-architect-links .gridpanel .architect-link:hover {  cursor: pointer;  background-color: #e9eaec;  /* .1 on a white bg */  user-select: none;}.enable-architect-links .formrow .architect-link:active,.enable-architect-links .gridpanel .architect-link:active {  background-color: #d3d5d9;  /* .2 on a white bg */}#architect-link-button:hover {  cursor: pointer;}';
+/* GLOBAL RESOURCES */
+
+var componentData = []; //Data about all components in the application
 
 //The class name that is used to toggle CSS
 const bodyClassName = 'enable-architect-links';
@@ -16,13 +15,16 @@ const elementQuery = '.formrow, .gridpanel'
 
 /* SETUP */
 
-if (!document.body.classList.contains('fw38')) {
-    throw new Error('Cannot show architect links as the current website does not seem to support the Novulo 3.8 framework.');
+if (!document.body.classList.contains('fw38') && !document.body.classList.contains('fw39')) {
+    throw new Error('Cannot show architect links as the current website does not seem to support the Novulo 3.8 or 3.9 framework.');
 }
 
 const testMode = getTestModeURLParameter();
 const currentMode = testMode ? 'show' : 'hide';
 const nextMode = testMode ? 'hide' : 'show';
+
+//This could also be done by sideloading a CSS file with the extension, but as we have to inject CSS for iframes anyway, this ensures that only one CSS codebase exists
+injectCustomCSS(document);
 
 ensureLinksToggleButton(nextMode); //Add the button that enables showing/hiding architect links for the next mode
 
@@ -36,7 +38,6 @@ if (testMode) { //If the testmode has already been applied, show architect links
 
     /*DO NOTHING AND WAIT FOR TOGGLE BUTTON TO BE PRESSED */
 }
-
 
 /* TOGGLE BUTTON */
 
@@ -61,7 +62,7 @@ function ensureLinksToggleButton(mode) {
     addToggleButtonEventlistener(mode);
 }
 
-//Add a new button to toggle architect links to the DOM
+//Add a new button to the DOM
 function addLinksToggleButton(id, mode) {
 
     const aboutnode = document.getElementById("about-link-button");
@@ -92,7 +93,7 @@ function addToggleButtonEventlistener(mode) {
 
 }
 
-//Toggle the URL parameter, the CSS and the buttons
+//Toggle the URL parameter (if needed), the CSS class of the body element(s) and the label of the toggle button
 function toggleArchitectLinks(mode) {
 
     var show = (mode == 'show');
@@ -108,11 +109,12 @@ function toggleArchitectLinks(mode) {
 
     toggleAllBodyClasses(mode);
 
-    //Ensure the correct button for the next round. It should be the inverse of the last button
+    //Ensure the correct button for the next round.
+    //It should be the inverse of the last button
     show ? ensureLinksToggleButton('hide') : ensureLinksToggleButton('show');
 }
 
-//Add or remove the CSS class to hide/show architect links
+//Add/remove the CSS class to all body elements to hide/show architect links
 function toggleAllBodyClasses(mode) {
 
     toggleBodyClass(document.body, mode);
@@ -170,7 +172,7 @@ function setTestModeURLParameter(bool) {
     var currentUrl = clearURLParameters(window.location.href);
 
     // Append "?__testmode=true" to the current URL
-    var newUrl = currentUrl + (currentUrl.indexOf('?') !== -1 ? '&' : '?') + '__testmode=' + String(bool);
+    var newUrl = currentUrl + '?__testmode=' + String(bool);
 
     // Reload the page with the new URL
     window.location.href = newUrl;
@@ -202,19 +204,19 @@ function clearURLParameters(url) {
 
 //Fetch component data and start watching for DOM changes if it succeeds
 function getComponentDataAndStartObserving() {
+
     const url = clearURLParameters(window.location.href) + "?about=yes";
+
     fetchTableData(url)
         .then(data => {
-            // Select the target node
-            var targetNode = document.body; //was getElementById('window-content-pane')
+            if (data) { //If data was retrieved sucessfully
 
-            if (data) {
                 //console.log('Table data:', data);
-                addMutationObserver(targetNode);
+
+                addMutationObserver(document.body); //Watch for any changes in the body element
+
             } else {
-                
                 throw new Error('Failed to fetch component data from the "?about=yes" page. Therefore no architect links can be added.');
-              
             }
         });
 }
@@ -268,6 +270,13 @@ function handleNode() {
             return;
         }
 
+        if (addedNode.id == "cursor_box_js") {
+            return;
+        }
+
+        if (addedNode.id == "cursor_box_content") {
+            return;
+        }
         //Reapply the architect links only after a wait time of 300ms.
         //The wait time is reset when the function is called again. This should reduce the amount of executions of reApplyArchitectLinks()
         debounce(reApplyArchitectLinks, 300);
@@ -295,6 +304,9 @@ function reApplyArchitectLinks() {
 
     //Add new links to the body
     initializeArchitectLinks(bodyElements);
+
+    //(Re-)load cursor_box.js for the main body
+    applyCursorBoxJS(document);
 
     //console.log('Reapplied architect links sucessfully to the body');
     reApplyArchitectLinksToElementsOfIframes();
@@ -357,17 +369,35 @@ function reApplyArchitectLinksToElementsOfIframe(iframe) {
 
     //Add new Architect links to the formrows
     initializeArchitectLinks(elementsWithinIframe);
+
+    //(Re-)load cursor_box.js within the iframe
+    applyCursorBoxJS(iframeDocument);
 }
 
 //Inject custom CSS to the ifram as it cannot acces the CSS of the parent scope
 function injectCustomCSS(myDocument) {
 
-    var id = "architectLinksCss";
+    var id = "architect_links_css";
 
     //Exit if custom CSS has already been applied
     if (myDocument.getElementById(id)) {
         return;
     }
+    // Create a new link element
+    var link = document.createElement('link');
+    link.rel = "stylesheet";
+    link.id = id;
+    var scriptURL = browser.extension.getURL('architect_links.css');
+    //console.log("The css file was found at: " + scriptURL);
+
+    // Set the href attribute to the URL of the bundled CSS file
+    link.href = scriptURL;
+    // Append the script to the document body
+    myDocument.body.appendChild(link);
+    //console.log('Sucessfully injected ' + id);
+
+
+    /* OLD APPROACH. REUSE MAYBE IF THE APPROACH ABOVE DOES NOT WORK FOR CHROME
 
     // Create a <style> element
     var style = myDocument.createElement('style');
@@ -387,6 +417,10 @@ function injectCustomCSS(myDocument) {
 
     // Append the <style> element to the iframe document's <head>
     myDocument.head.appendChild(style);
+
+    */
+
+
 }
 
 //Remove all outdated architect links from the DOM
@@ -444,16 +478,27 @@ function addArchitectLink(sourceStructureId, element) {
     // Add click event to the left section of the formrow
     var architectLink = document.createElement('div');
     architectLink.classList.add('architect-link');
-    architectLink.classList.add('n-framework-icon');
-    architectLink.style.height = this.offsetHeight + 'px'; // Height of the clickable area  
-    architectLink.innerText = mNumber;
-    architectLink.title = title;
+
+    architectLink.innerText = titleAndMNumber;
+    //architectLink.title = title;
+
+    var jsonData = {
+        "mNumber": mNumber,
+        "title": title
+    }
+    architectLink.setAttribute('data-json', JSON.stringify(jsonData));
+
     architectLink.addEventListener('click', openArchitect(sourceStructureId));
 
+    //Add the link icon as a span element
+    var icon = document.createElement('span');
+    icon.classList.add('n-framework-icon');
+    icon.classList.add('icon');
+    architectLink.appendChild(icon);
 
     // Append clickable area to the formrow or gripanel
     element.insertBefore(architectLink, element.firstChild);
-    element.title = titleAndMNumber;
+    //element.title = titleAndMNumber;
 
 }
 
@@ -498,7 +543,6 @@ function getComponentForGuid(guid) {
     const component = componentData.find(item => item.guid === guid);
     return component ? component : console.error("No component was found for guid " + guid);
 }
-
 
 /* GET COMPONENT DATA */
 
@@ -572,4 +616,149 @@ async function fetchTableData(url) {
             }
         }
     }
+}
+
+
+/* CURSOR BOX WITH ADDITIONAL FIELD INFO */
+
+function applyCursorBoxJS(myDocument) {
+
+    ensureCursorBox(myDocument);
+
+    listenToMouseMovements(myDocument);
+
+    listenForCTRL(myDocument);
+
+    injectCursorBoxJS(myDocument);
+
+}
+
+function ensureCursorBox(myDocument) {
+
+    var id = 'cursor-box';
+
+    if (myDocument.getElementById(id) != null) {
+        return;
+    }
+
+    // Create the cursor box element
+    var cursorBox = myDocument.createElement('div');
+    cursorBox.id = id;
+    // Append the cursor box to the body
+    myDocument.body.appendChild(cursorBox);
+}
+
+function listenToMouseMovements(myDocument) {
+
+    var cursorBox = myDocument.getElementById('cursor-box');
+
+    // Offset the box slightly to make sure it doesn't cover the cursor
+    var offsetX = 10;
+    var offsetY = 10;
+
+    myDocument.addEventListener('mousemove', handleMouseMove());
+
+    function handleMouseMove() {
+        return function (e) {
+
+            if (!cursorBox.classList.contains('show') || cursorBox.classList.contains('freeze')) {
+                return;
+            }
+
+            var x = e.clientX;
+            var y = e.clientY;
+
+            // Set the position of the box
+            cursorBox.style.left = (x + offsetX) + 'px';
+            cursorBox.style.top = (y + offsetY) + 'px';
+        };
+    }
+}
+
+function injectCursorBoxJS(myDocument) {
+
+    var name = 'cursor_box';
+
+    var id = name + '_js';
+
+    var oldScript = myDocument.getElementById(id);
+
+    if (oldScript != undefined) {
+        oldScript.remove();
+    }
+
+    // Create a script element
+    var script = myDocument.createElement('script');
+
+    script.id = id;
+
+    var scriptURL = browser.extension.getURL(name + '.js');
+    // Set the src attribute to the URL of your bundled JavaScript file
+    script.src = scriptURL;
+    // Append the script to the document body
+    myDocument.body.appendChild(script);
+
+    //console.log('Sucessfully injected ' + name + '.js');
+}
+
+// Flag to track whether the action has already been executed
+let ctrlKeyPressed = false;
+
+// Function to handle the event when Ctrl key is pressed
+function handleCtrlKey(event, myDocument) {
+
+    if (!architectLinksEnabled()) {
+        return;
+    }
+
+    // Check if the Ctrl key is still pressed
+    if (!event.ctrlKey || ctrlKeyPressed) {
+        return;
+    }
+
+    // console.log('CTRL down');
+
+    var cursorBox = myDocument.getElementById('cursor-box');
+
+    cursorBox.classList.add('freeze');
+
+    // Set the flag to true to indicate that the action has been executed
+    ctrlKeyPressed = true;
+
+}
+
+// Function to handle the event when Ctrl key is released
+function handleCtrlKeyRelease(myDocument) {
+
+    if (!architectLinksEnabled()) {
+        return;
+    }
+
+    // Check if the Ctrl key is released
+    if (!ctrlKeyPressed) {
+        return;
+    }
+
+    // Reset the flag when the Ctrl key is released
+    ctrlKeyPressed = false;
+
+    var cursorBox = myDocument.getElementById('cursor-box');
+    cursorBox.classList.remove('freeze');
+}
+
+function architectLinksEnabled() {
+    return document.body.classList.contains(bodyClassName);
+}
+
+function listenForCTRL(myDocument) {
+
+    // Add event listeners for keydown and keyup events
+    myDocument.addEventListener('keydown', function (event) {
+        handleCtrlKey(event, myDocument);
+    });
+
+    myDocument.addEventListener('keyup', function (event) {
+        handleCtrlKeyRelease(myDocument);
+    });
+
 }

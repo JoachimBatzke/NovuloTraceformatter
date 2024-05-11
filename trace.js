@@ -124,7 +124,7 @@ function setBodyClass(bodyClass) {
 //If no table exists that potentially contains trace info, throw an error
 function noTraceFoundError() {
 
-  if (!isNovuloTrace()) { //Mayebe we are on the trace overview page as no table with trace content has been found
+  if (isNovuloTrace()) { //Maybe we are on the trace overview page as no table with trace content has been found
 
     //If we are on the trace overview page, replace the "Clear trace" link with a button
     replaceClearButton();

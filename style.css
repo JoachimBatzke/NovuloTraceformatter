@@ -83,7 +83,7 @@ body.traceformatter-was-here #buttonwrapper {
 }
 
 body.traceformatter-was-here #buttonwrapper button,
-body.traceformatter-was-here #clear-trace-btn {
+#clear-trace-btn {
   cursor: pointer;
   margin-right: 20px;
   line-height: 30px;

@@ -1,0 +1,105 @@
+.architect-link {
+  display: none;
+}
+
+.enable-architect-links .formrow:hover .architect-link,
+.enable-architect-links .gridpanel:hover .architect-link {
+  z-index: 1000000;
+  background-color: white;
+  height: 24px;
+  width: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-indent: 30px;
+  position: absolute;
+  border-radius: 3px;
+  display: block;
+  line-height: 24px;
+  color: rgba(33, 46, 63, 1);
+  box-shadow:
+    0px 2px 4px -1px rgba(0, 0, 0, .2),
+    0px 4px 5px 0px rgba(0, 0, 0, .14),
+    0px 1px 10px 0px rgba(0, 0, 0, .12);
+}
+
+.enable-architect-links .formrow:hover .architect-link .icon,
+.enable-architect-links .gridpanel:hover .architect-link .icon {
+  height: 24px;
+  width: 24px;
+  background-position: -18px -3138px;
+  display: inline-block;
+  position: absolute;
+  left: 0px;
+}
+
+.enable-architect-links .formrow:hover .architect-link {
+  left: 0px;
+}
+
+.enable-architect-links .gridpanel:hover .architect-link {
+  left: 8px;
+  top: 8px;
+}
+
+.enable-architect-links .formrow .architect-link:hover,
+.enable-architect-links .gridpanel .architect-link:hover {
+  cursor: pointer;
+  width: auto;
+  padding-right: 4px;
+  background-color: #e9eaec;
+  /* .1 on a white bg */
+  user-select: none;
+}
+
+.enable-architect-links .formrow .architect-link:active,
+.enable-architect-links .gridpanel .architect-link:active {
+  background-color: #d3d5d9;
+  /* .2 on a white bg */
+}
+
+#architect-link-button:hover {
+  cursor: pointer;
+}
+
+#cursor-box {
+  visibility: hidden;
+  position: fixed;
+  padding: 8px;
+  line-height: 18px;
+  background-color: white;
+  color: rgba(33, 46, 63, 1);
+  border-radius: 3px;
+  z-index: 99999;
+  box-shadow:
+    0px 2px 4px -1px rgba(0, 0, 0, .2),
+    0px 4px 5px 0px rgba(0, 0, 0, .14),
+    0px 1px 10px 0px rgba(0, 0, 0, .12);
+}
+
+#cursor-box.show {
+  visibility: visible;
+}
+
+#cursor-box.freeze {
+  border: rgba(33, 46, 63, 1) 1px solid ;
+}
+
+#cursor-box ul li .label {
+  width: 80px;
+  display: inline-block;
+  text-align: right;
+  color: rgba(33, 46, 63, 0.7);
+  padding-right: 8px;
+}
+
+#cursor-box ul li .value {
+  display: inline-block;
+}
+
+#cursor-box .info {
+  color: rgba(33, 46, 63, 0.7);
+}
+
+/*Darkmode*/
+
+@media (prefers-color-scheme: dark) {}
