@@ -1,10 +1,10 @@
-//SETUP ----
-
-//Measure how long it took to render the DOM and log it to the console
-measureDOMLoadingDuration();
+//SETUP FOR TRACE FORMATTING----
 
 //Find the table that contains the trace
 const table = findTable();
+
+//Measure how long it took to render the DOM and log it to the console
+measureDOMLoadingDuration();
 
 //Global const for the table length of the table that contains the trace information
 const tl = table.rows.length;
@@ -55,6 +55,14 @@ if (tl < MAX_ROWS_FOR_PROCESSING && !lazymode) {
 
 //FUNCTIONS ----
 
+function isNovuloTrace() {
+  // Get the current URL
+  const currentURL = window.location.href;
+
+  // Check if the URL contains "race.axd" so it can be Trace.axd or trace.axd
+  return currentURL.includes('race.axd');
+}
+
 //Measure how long it takes to render the DOM and log it to the console
 function measureDOMLoadingDuration() {
   // Create a new PerformanceObserver to monitor the "navigation" performance entry type.
@@ -76,12 +84,14 @@ function measureDOMLoadingDuration() {
 //Find the table the contains the actual trace data
 function findTable() {
   var tableID = "trace-table";
+  var bodyClass = "traceformatter-was-here";
 
   //Try to find the actual trace content. The id only exists if it has been set by an earlier formatting so in most case it will be undefined
   var t = document.getElementById(tableID);
 
   //Table found with an id that has been set by a previous formatter
   if (!(t == undefined)) {
+    setBodyClass(bodyClass);
     return t;
   }
 
@@ -103,17 +113,25 @@ function findTable() {
   //Set the id so the the next traceformatter can find the table immediatly
   t.id = tableID;
 
+  setBodyClass(bodyClass);
   return t;
+}
+
+function setBodyClass(bodyClass) {
+  document.body.classList.add(bodyClass);
 }
 
 //If no table exists that potentially contains trace info, throw an error
 function noTraceFoundError() {
 
-  //If we are on the trace overview page, replace the "Clear trace" link with a button
-  replaceClearButton();
+  if (isNovuloTrace()) { //Maybe we are on the trace overview page as no table with trace content has been found
+
+    //If we are on the trace overview page, replace the "Clear trace" link with a button
+    replaceClearButton();
+  }
 
   throw new Error(
-    "NovuloTraceformatter has stopped: No table was found that could be formatted"
+    "NovuloTraceformatter has been stopped because no table was found that could be formatted"
   );
 }
 
@@ -129,23 +147,32 @@ function replaceClearButton() {
 
   var existingLink = document.querySelector(
     ".tracecontent td .link"
-  ).parentElement;
+  );
 
-  if (existingLink) {
-    var newButton = document.createElement("button");
-    newButton.setAttribute(
-      "onclick",
-      "window.location.href='Trace.axd?clear=1'"
-    );
-    newButton.setAttribute("class", "clear-button");
-    newButton.id = "clear-trace-btn";
-    newButton.innerHTML = "Clear all current trace data 🗑️";
-
-    var newTd = document.createElement("td");
-    newTd.appendChild(newButton);
-
-    existingLink.parentNode.replaceChild(newButton, existingLink);
+  if (!existingLink) {
+    return;
   }
+
+  existingLink = existingLink.parentElement;
+
+  if (!existingLink) {
+    return;
+  }
+
+  var newButton = document.createElement("button");
+  newButton.setAttribute(
+    "onclick",
+    "window.location.href='Trace.axd?clear=1'"
+  );
+  newButton.setAttribute("class", "clear-button");
+  newButton.id = "clear-trace-btn";
+  newButton.innerHTML = "Clear all current trace data 🗑️";
+
+  var newTd = document.createElement("td");
+  newTd.appendChild(newButton);
+
+  existingLink.parentNode.replaceChild(newButton, existingLink);
+
 }
 
 //If the traceformatter has already run then there is an array with button IDs that is stored as an HTML element in the DOM
@@ -614,12 +641,12 @@ function allButtonPromisesResolved() {
 function addButtons(array) {
   //Add a button for each button id in the array
   for (let j = 0; j < array.length; j++) {
-    addButton(array[j]);
+     ensureToggleButton(array[j]);
   }
 }
 
 //Add a single button to a specific collapsable cell
-function addButton(buttonid) {
+function  ensureToggleButton(buttonid) {
   //trs = TableRowStartElement
   var trs = document.getElementById("s" + buttonid);
   // Get second cell in the row
