@@ -2,6 +2,12 @@
   display: none;
 }
 
+/* For debugging
+.enable-architect-links .highlight{
+  border: 1px solid red !important; 
+}
+*/
+
 .enable-architect-links .formrow:hover .architect-link,
 .enable-architect-links .gridpanel:hover .architect-link {
   z-index: 1000000;
@@ -33,7 +39,7 @@
 }
 
 .enable-architect-links .formrow:hover .architect-link {
-  left: 0px;
+  left: -23px;
 }
 
 .enable-architect-links .gridpanel:hover .architect-link {

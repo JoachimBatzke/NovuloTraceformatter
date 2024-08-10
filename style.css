@@ -1,3 +1,20 @@
+:root {
+  --traceformatter-link-color: rgb(47, 133, 212);
+  --traceformatter-process-action-start-color: 112, 177, 58, ;
+  --traceformatter-process-action-finish-color: 225, 133, 133, ;
+  --traceformatter-foreach-action-start-color: 242, 139, 37, ;
+  --traceformatter-foreach-action-finish-color: 91, 124, 186, ;
+}
+
+body.traceformatter-was-here .highlight{
+  background-color: #ffff00 !important;
+}
+
+.tracecontent {
+  /*Hide everything to prevent reflows while formatting. This is overwritten by JS when the whole script has run*/
+  display: none;
+}
+
 body.traceformatter-was-here {
   font-family: arial, sans-serif;
 }
@@ -14,17 +31,21 @@ body.traceformatter-was-here .progress-bar {
   height: 100%;
   background-color: #81b668;
   /*transition: width 0.1s ease-out;*/
+  z-index: 110;
 }
 
 body.traceformatter-was-here .hidden {
   display: none;
 }
+
 body.traceformatter-was-here #ranking {
   right: 284px;
 }
+
 body.traceformatter-was-here #popular {
   right: 144px;
 }
+
 body.traceformatter-was-here #ranking,
 body.traceformatter-was-here #popular {
   position: fixed;
@@ -34,11 +55,14 @@ body.traceformatter-was-here #popular {
   box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2),
     0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
   border-radius: 3px;
+  z-index: 100;
 }
+
 body.traceformatter-was-here #ranking .header,
 body.traceformatter-was-here #popular .header {
   font-weight: bold;
 }
+
 body.traceformatter-was-here #ranking td,
 body.traceformatter-was-here #popular td {
   max-width: 300px;
@@ -47,31 +71,37 @@ body.traceformatter-was-here #popular td {
   text-overflow: ellipsis;
   padding: 2px 10px;
 }
+
 body.traceformatter-was-here #popular td.freq {
   text-align: center;
 }
+
 body.traceformatter-was-here #popular td.took {
   text-align: right;
 }
+
 body.traceformatter-was-here #popular td .next,
 body.traceformatter-was-here #popular td .prev {
   padding: 3px 10px;
   cursor: pointer;
   user-select: none;
 }
+
 body.traceformatter-was-here #popular td .next:hover,
 body.traceformatter-was-here #popular td .prev:hover {
   background-color: rgba(0, 0, 0, 0.2);
 }
+
 body.traceformatter-was-here span.tracecontent a,
 body.traceformatter-was-here span.tracecontent a.link,
 body.traceformatter-was-here a {
-  color: rgb(47, 133, 212);
+  color: var(--traceformatter-link-color);
   text-decoration: none;
 }
+
 body.traceformatter-was-here span.tracecontent a:hover,
 body.traceformatter-was-here a:hover {
-  color: rgb(47, 133, 212);
+  color: var(--traceformatter-link-color);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -80,6 +110,7 @@ body.traceformatter-was-here #buttonwrapper {
   position: fixed;
   right: 0px;
   top: 20px;
+  z-index: 100;
 }
 
 body.traceformatter-was-here #buttonwrapper button,
@@ -88,6 +119,7 @@ body.traceformatter-was-here #buttonwrapper button,
   margin-right: 20px;
   line-height: 30px;
   padding: 0px 10px;
+  position: relative;
   box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2),
     0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
 }
@@ -105,11 +137,8 @@ body.traceformatter-was-here span.tracecontent th {
   padding: 0px 8px 0px 8px;
 }
 
-body.traceformatter-was-here
-  span.tracecontent
-  #trace-table
-  tr:not(:first-child):not(:nth-child(2))
-  td:first-child {
+body.traceformatter-was-here span.tracecontent #trace-table tr:not(:first-child):not(:nth-child(2)) td:first-child,
+body.traceformatter-was-here .skeleton-row td:first-child {
   text-align: right;
 }
 
@@ -132,9 +161,11 @@ body.traceformatter-was-here span.tracecontent tr td:nth-child(4) {
   0% {
     background-color: transparent;
   }
+
   50% {
     background-color: #ffff00;
   }
+
   100% {
     background-color: transparent;
   }
@@ -146,38 +177,55 @@ body.traceformatter-was-here span.tracecontent tr.flash {
 }
 
 body.traceformatter-was-here span.tracecontent tr.collapsed td span.start {
-  background-color: rgba(112, 177, 58, 0.7);
-  /*height: 30px;
-  line-height: 30px;*/
   font-weight: bolder;
 }
 
-body.traceformatter-was-here span.tracecontent tr td span.finish {
-  background-color: rgba(225, 133, 133, 0.5);
+body.traceformatter-was-here span.tracecontent tr.process_action td span.finish {
+  background-color: rgba(var(--traceformatter-process-action-finish-color) 0.5);
+}
+
+body.traceformatter-was-here span.tracecontent tr.foreach_action td span.finish {
+  background-color: rgba(var(--traceformatter-foreach-action-finish-color) 0.5);
 }
 
 body.traceformatter-was-here span.tracecontent td span.start {
   cursor: pointer;
-  background-color: rgba(112, 177, 58, 0.5);
-  /*height: 20px;
-  line-height: 20px;
-  display: inline-block;*/
   padding: 0 8px 0 8px;
 }
 
-body.traceformatter-was-here span.tracecontent tr:hover td span.start {
-  background: rgba(112, 177, 58, 0.7);
+body.traceformatter-was-here span.tracecontent tr.process_action td span.start,
+body.traceformatter-was-here span.tracecontent tr.collapsed.process_action td span.start {
+  background-color: rgba(var(--traceformatter-process-action-start-color) 0.5);
 }
 
-body.traceformatter-was-here span.tracecontent tr:hover td span.start:active {
-  background: rgba(112, 177, 58, 0.9);
+body.traceformatter-was-here span.tracecontent tr.foreach_action td span.start,
+body.traceformatter-was-here span.tracecontent tr.collapsed.foreach_action td span.start {
+  background-color: rgba(var(--traceformatter-foreach-action-start-color) 0.5);
 }
 
-body.traceformatter-was-here tr td.error {
+body.traceformatter-was-here span.tracecontent tr:hover.process_action td span.start,
+body.traceformatter-was-here span.tracecontent tr:hover.collapsed.process_action td span.start {
+  background: rgba(var(--traceformatter-process-action-start-color) 0.7);
+}
+
+body.traceformatter-was-here span.tracecontent tr:hover.foreach_action td span.start,
+body.traceformatter-was-here span.tracecontent tr:hover.collapsed.foreach_action td span.start {
+  background: rgba(var(--traceformatter-foreach-action-start-color) 0.7);
+}
+
+body.traceformatter-was-here span.tracecontent tr:hover.process_action td span.start:active {
+  background: rgba(var(--traceformatter-process-action-start-color) 0.9);
+}
+
+body.traceformatter-was-here span.tracecontent tr:hover.foreach_action td span.start:active {
+  background: rgba(var(--traceformatter-foreach-action-start-color) 0.9);
+}
+
+body.traceformatter-was-here span.tracecontent td.error {
   color: red;
 }
 
-body.traceformatter-was-here #firstError {
+body.traceformatter-was-here span.tracecontent #firstError {
   background-color: red;
   color: white;
 }
@@ -191,7 +239,8 @@ body.traceformatter-was-here .spinner {
   border-top: 2px solid #000;
   width: 16px;
   height: 16px;
-  -webkit-animation: spin 1s linear infinite; /* Safari */
+  -webkit-animation: spin 1s linear infinite;
+  /* Safari */
   animation: spin 1s linear infinite;
   display: inline-block;
   top: 5px;
@@ -204,16 +253,59 @@ body.traceformatter-was-here .spinner {
   0% {
     -webkit-transform: rotate(0deg);
   }
+
   100% {
     -webkit-transform: rotate(360deg);
   }
 }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
+  }
+}
+
+#skeleton-wrapper {
+  position: relative;
+}
+
+.tracecontent {
+  overflow-x: hidden; /*Prevents the horizontal scrollbar to show up when the Pseudo shimmer element moves off screen to the right*/
+}
+
+.shimmer {
+  position: relative; /*Prevents the horizontal scrollbar to show up when the Pseudo shimmer element moves off screen to the right*/
+}
+
+.shimmer::before {
+  top: 0;
+  left: 0;
+  content: "";
+  position: absolute;
+  background: linear-gradient(90deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.01) 10%,
+      rgba(0, 0, 0, 0.25) 40%,
+      rgba(0, 0, 0, 0.3) 50%,
+      rgba(0, 0, 0, 0.25) 60%,
+      rgba(0, 0, 0, 0.01) 90%,
+      rgba(0, 0, 0, 0) 100%);
+  animation: shimmer 3s infinite;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
   }
 }
 
@@ -224,44 +316,67 @@ body.traceformatter-was-here .spinner {
     background-color: #000000;
     color: rgba(255, 255, 255, 0.8);
   }
+
   body.traceformatter-was-here #ranking,
   body.traceformatter-was-here #popular {
     background-color: #000;
   }
+
   body.traceformatter-was-here #popular td .next:hover,
   body.traceformatter-was-here #popular td .prev:hover {
     background-color: rgba(255, 255, 255, 0.2);
   }
+
   body.traceformatter-was-here span.tracecontent {
     background-color: #000;
   }
+
   body.traceformatter-was-here span.tracecontent b,
   body.traceformatter-was-here span.tracecontent {
     color: rgba(255, 255, 255, 0.8);
   }
+
   body.traceformatter-was-here span.tracecontent tr.subhead {
     background-color: #202020;
   }
+
   body.traceformatter-was-here span.tracecontent th.alt,
   body.traceformatter-was-here span.tracecontent th.alt b {
     background-color: rgb(77, 77, 77);
   }
+
   body.traceformatter-was-here span.tracecontent td {
     color: rgba(255, 255, 255, 0.8);
   }
+
   body.traceformatter-was-here span.tracecontent tr.alt {
     background-color: #202020;
   }
+
   body.traceformatter-was-here span.tracecontent a,
   body.traceformatter-was-here a,
   body.traceformatter-was-here span.tracecontent a:hover,
   body.traceformatter-was-here a:hover {
     color: rgb(139, 196, 250);
   }
+
   body.traceformatter-was-here span.tracecontent td.performance {
     color: black;
   }
+
   body.traceformatter-was-here span.tracecontent hr {
     color: white;
   }
+
+  #skeleton-wrapper::before {
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.01) 10%,
+        rgba(255, 255, 255, 0.25) 40%,
+        rgba(255, 255, 255, 0.3) 50%,
+        rgba(255, 255, 255, 0.25) 60%,
+        rgba(255, 255, 255, 0.01) 90%,
+        rgba(255, 255, 255, 0) 100%);
+  }
+
 }

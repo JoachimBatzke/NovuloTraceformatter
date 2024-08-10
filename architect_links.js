@@ -1,42 +1,48 @@
 /*
 This code helps developers and application owners of Novulo web applications to find and open the underlying components/models quickly.
 */
+enableArchitectLinksIfNeeded();
 
+function enableArchitectLinksIfNeeded() {
 
-/* GLOBAL RESOURCES */
+    /* GLOBAL RESOURCES */
 
-var componentData = []; //Data about all components in the application
+    window.componentData = []; //Data about all components in the application. Is filled once in the beginning and then references for looking up the component names and numbers for a given GUID
 
-//The class name that is used to toggle CSS
-const bodyClassName = 'enable-architect-links';
+    //The class name that is used to toggle CSS
+    window.bodyClassName = 'enable-architect-links';
 
-//The query to select all elements that should get an architect link
-const elementQuery = '.formrow, .gridpanel'
+    //The query to select all elements that should get an architect link
+    window.elementQuery = '.formrow, .gridpanel'
 
-/* SETUP */
+    /* SETUP */
 
-if (!document.body.classList.contains('fw38') && !document.body.classList.contains('fw39')) {
-    throw new Error('Cannot show architect links as the current website does not seem to support the Novulo 3.8 or 3.9 framework.');
-}
+    if (!document.body.classList.contains('fw38') && !document.body.classList.contains('fw39')) {
+        console.warn('Cannot show architect links as the current website does neither seem to support the Novulo framework version 3.8 nor 3.9');
+        return;
+    }
 
-const testMode = getTestModeURLParameter();
-const currentMode = testMode ? 'show' : 'hide';
-const nextMode = testMode ? 'hide' : 'show';
+    window.testMode = getTestModeURLParameter();
+    window.currentMode = testMode ? 'show' : 'hide';
+    window.nextMode = testMode ? 'hide' : 'show';
 
-//This could also be done by sideloading a CSS file with the extension, but as we have to inject CSS for iframes anyway, this ensures that only one CSS codebase exists
-injectCustomCSS(document);
+    //This could also be done by sideloading a CSS file with the extension, but as we have to inject CSS for iframes anyway, this ensures that only one CSS codebase exists
+    ensureInjectedCustomCSS(document);
 
-ensureLinksToggleButton(nextMode); //Add the button that enables showing/hiding architect links for the next mode
+    ensureLinksToggleButton(nextMode); //Add the button that enables showing/hiding architect links for the next mode
 
-toggleAllBodyClasses(currentMode);
+    toggleAllBodyClasses(currentMode);
 
-if (testMode) { //If the testmode has already been applied, show architect links on the first page load
+    if (testMode) { //If the testmode has already been applied, show architect links on the first page load
 
-    getComponentDataAndStartObserving();
+        // console.log("testmode = " + testMode + ". Will get data and start observing.");
+        getComponentDataAndStartObserving();
 
-} else {
+    } else {
 
-    /*DO NOTHING AND WAIT FOR TOGGLE BUTTON TO BE PRESSED */
+        /*DO NOTHING AND WAIT FOR TOGGLE BUTTON TO BE PRESSED */
+    }
+
 }
 
 /* TOGGLE BUTTON */
@@ -105,6 +111,15 @@ function toggleArchitectLinks(mode) {
         setTestModeURLParameter(true);
 
         return; //The process will stop because of a page reload
+    }
+
+    //If architect links should be shown
+    if (show) {
+
+        //Reapply all eventlisteners
+        //The wait time is reset when the function is called again. This should reduce the amount of executions of reApplyArchitectLinks()
+        debounce(ensureAllArchitectLinks, 100);
+
     }
 
     toggleAllBodyClasses(mode);
@@ -213,7 +228,11 @@ function getComponentDataAndStartObserving() {
 
                 //console.log('Table data:', data);
 
-                addMutationObserver(document.body); //Watch for any changes in the body element
+                var body = document.body;
+
+                //console.log("Adding a mutation observer to: " + body);
+
+                addMutationObserver(body); //Watch for any changes in the body element
 
             } else {
                 throw new Error('Failed to fetch component data from the "?about=yes" page. Therefore no architect links can be added.');
@@ -225,7 +244,7 @@ function getComponentDataAndStartObserving() {
 function addMutationObserver(targetNode) {
 
     // Create a MutationObserver instance
-    var observer = new MutationObserver(handleMutations());
+    var observer = new MutationObserver(handleMutations);
 
     // Configuration of the observer:
     var config = { childList: true, subtree: true };
@@ -236,84 +255,115 @@ function addMutationObserver(targetNode) {
 }
 
 //Handle all DOM mutations that are seen by the mutation observer
-function handleMutations() {
+function handleMutations(mutations) {
 
-    return function (mutations) {
-        mutations.forEach(handleMutation());
-    };
+    //console.log("Saw a mutation.");
+    mutations.forEach(handleMutation);
+
 }
 
 //Handle a single DOM mutation that is seen by the mutation observer
-function handleMutation() {
-    return function (mutation) {
+function handleMutation(mutation) {
 
-        // Check if nodes were added
-        if (!(mutation.type === 'childList' && mutation.addedNodes.length > 0)) {
-            return;
-        }
+    // Check if nodes were added
+    if (!(mutation.type === 'childList' && mutation.addedNodes.length > 0)) {
+        return;
+    }
 
-        // Call function for each added node
-        mutation.addedNodes.forEach(handleNode());
-    };
+    // Call function for each added node
+    mutation.addedNodes.forEach(handleNode);
+
 }
 
-//Handle the actions for a single new node
-function handleNode() {
-    return function (addedNode) {
-        var classlist = addedNode.classList;
+//Handle the actions for a single changed node
+function handleNode(changedNode) {
 
-        if (classlist == undefined) {
+    var id = changedNode.id;
+
+    if (id == "cursor_box_js") {
+        return;
+    }
+
+    if (id == "cursor_box_content") {
+        return;
+    }
+
+    var classlist = changedNode.classList;
+
+    if (!classlist == undefined) {
+
+        if (classlist.contains("architect-link")) {
             return;
         }
 
-        if (addedNode.classList.contains("architect-link")) {
-            return;
-        }
+    }
 
-        if (addedNode.id == "cursor_box_js") {
-            return;
-        }
+    /* FOR DEBUGGING
+    if (classlist.contains("highlight")) {
+        return;
+    }
+    console.log(classlist);
+    changedNode.classList.add("highlight");
+    */
 
-        if (addedNode.id == "cursor_box_content") {
-            return;
-        }
-        //Reapply the architect links only after a wait time of 300ms.
-        //The wait time is reset when the function is called again. This should reduce the amount of executions of reApplyArchitectLinks()
-        debounce(reApplyArchitectLinks, 300);
-    };
+    //Reapply the architect links only after a wait time of 300ms.
+    //The wait time is reset when the function is called again. This should reduce the amount of executions of reApplyArchitectLinks()
+    //console.log("Reapplying architect links.");
+    debounce(ensureAllArchitectLinks, 300);
+
 }
 
 let timeoutId;
+
 //Standard debounce function to improve performance and reduce unneccessary load by redundant execution of functions
 function debounce(callback, delay) {
+
+    //console.log("Debouncing with a delay of " + delay);
     clearTimeout(timeoutId);
     timeoutId = setTimeout(callback, delay);
 }
 
-//Remove old links if the exist and initialize new ones
-function reApplyArchitectLinks() {
+//Add new links if needed
+function ensureAllArchitectLinks() {
 
-    // Get all relevant elements for applying architect links
-    var bodyElements = document.body.querySelectorAll(elementQuery);
-
-    //This could also be done by sideloading a CSS file with the extension, but as we have to inject CSS for iframes anyway, this ensures that only one CSS codebase exists
-    injectCustomCSS(document);
-
-    //Just to be sure, remove old links that could otherwise mess up the application of new links
-    removeOldLinks(bodyElements);
-
-    //Add new links to the body
-    initializeArchitectLinks(bodyElements);
-
-    //(Re-)load cursor_box.js for the main body
-    applyCursorBoxJS(document);
+    ensureArchitectLinksForDocument(document);
 
     //console.log('Reapplied architect links sucessfully to the body');
-    reApplyArchitectLinksToElementsOfIframes();
+    ensureArchitectLinksToElementsOfIframes();
 
 }
 
-//Get all iframes ore return []
+//Add new links to a document
+function ensureArchitectLinksForDocument(doc) {
+
+    // Get all relevant elements for applying architect links
+    var unfilteredElements = doc.body.querySelectorAll(elementQuery);
+
+    //console.log("Found " + unfilteredElements.length + " elements.");
+
+    if (unfilteredElements.length == 0) {
+        //console.log("No formrows within " + doc.body + " found");
+        return;
+    }
+
+    //This could also be done by sideloading a CSS file with the extension, but as we have to inject CSS for iframes anyway, this ensures that only one CSS codebase exists
+    ensureInjectedCustomCSS(doc);
+
+    var els = getElementsWithoutLink(unfilteredElements);
+
+    //onsole.log("Found " + els.length + " elements without links:");
+    //console.log(els);
+    if (els.length == 0) { return; }
+
+    //Add new links to the body
+    initializeArchitectLinks(els);
+
+    //(Re-)load cursor_box.js for current document
+    applyCursorBoxJS(doc);
+
+}
+
+//Get all iframes or return []
 function getAllIframes() {
 
     var iframes = document.querySelectorAll('.k-window-iframecontent .k-content-frame');
@@ -328,7 +378,7 @@ function getAllIframes() {
 }
 
 //Search for iFrames and apply Architect links to each
-function reApplyArchitectLinksToElementsOfIframes() {
+function ensureArchitectLinksToElementsOfIframes() {
 
     getAllIframes().forEach(function (iframe) {
         reApplyArchitectLinksToElementsOfIframe(iframe);
@@ -348,34 +398,17 @@ function reApplyArchitectLinksToElementsOfIframe(iframe) {
         return;
     }
 
-    // Select formrows within the iframe
-    var elementsWithinIframe = iframeDocument.querySelectorAll(elementQuery);
-
-    if (elementsWithinIframe.length == 0) {
-        //console.log("No formrows within iframeDocument found: " + iframeDocument);
-        return;
-    }
-
-    //Inject custom CSS since the iFrame can't acces the CSS in the parent scope
-    injectCustomCSS(iframeDocument);
-
     //Set the class at the iframe body if it is set at the main body
     if (document.body.classList.contains(bodyClassName)) {
         toggleBodyClass(iframeDocument.body, 'show');
     }
 
-    //Remove any old links to prevent errors if some DOM mnaipulation caused the old links to break
-    removeOldLinks(elementsWithinIframe);
+    ensureArchitectLinksForDocument(iframeDocument);
 
-    //Add new Architect links to the formrows
-    initializeArchitectLinks(elementsWithinIframe);
-
-    //(Re-)load cursor_box.js within the iframe
-    applyCursorBoxJS(iframeDocument);
 }
 
 //Inject custom CSS to the ifram as it cannot acces the CSS of the parent scope
-function injectCustomCSS(myDocument) {
+function ensureInjectedCustomCSS(myDocument) {
 
     var id = "architect_links_css";
 
@@ -387,7 +420,9 @@ function injectCustomCSS(myDocument) {
     var link = document.createElement('link');
     link.rel = "stylesheet";
     link.id = id;
-    var scriptURL = browser.extension.getURL('architect_links.css');
+
+    var scriptURL = getExtensionURLforFilename('architect_links.css');
+
     //console.log("The css file was found at: " + scriptURL);
 
     // Set the href attribute to the URL of the bundled CSS file
@@ -396,49 +431,43 @@ function injectCustomCSS(myDocument) {
     myDocument.body.appendChild(link);
     //console.log('Sucessfully injected ' + id);
 
+}
 
-    /* OLD APPROACH. REUSE MAYBE IF THE APPROACH ABOVE DOES NOT WORK FOR CHROME
+//Get the file path for a file within the bundled extension
+function getExtensionURLforFilename(filename) {
 
-    // Create a <style> element
-    var style = myDocument.createElement('style');
-    style.id = id;
-    style.type = 'text/css';
+    if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.getURL) {
+        // Firefox
+        return browser.runtime.getURL(filename);
 
-    // Define custom CSS rules
-    var css = customCss;
+    } else if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+        // Chrome
+        return chrome.runtime.getURL(filename);
 
-    // Append the CSS rules to the <style> element
-    if (style.styleSheet) {
-        // For IE
-        style.styleSheet.cssText = css;
     } else {
-        style.appendChild(myDocument.createTextNode(css));
+        // Handle unsupported browsers
+        console.error('Unsupported browser. Cannot locate "architect_links.css".');
     }
-
-    // Append the <style> element to the iframe document's <head>
-    myDocument.head.appendChild(style);
-
-    */
-
-
 }
 
 //Remove all outdated architect links from the DOM
-function removeOldLinks(elements) {
+function getElementsWithoutLink(elements) {
 
-    //return;
-    //loop through all elements (probably a list of fromrows)
+    var newElements = [];
+
+    //loop through all elements (probably a list of fromrows and gridpanels)
     elements.forEach(element => {
 
-        //console.log(element);
-
-        // Get all elements with class 'formrow'
+        // Get all elements with class 'formrow' within
         var es = element.querySelectorAll('.architect-link');
 
-        es.forEach(e => {
-            e.remove();
-        })
+        if (es.length == 0) {
+            newElements.push(element);
+        }
+
     })
+
+    return newElements;
 }
 
 //Add all new architect links to the DOM
@@ -621,6 +650,7 @@ async function fetchTableData(url) {
 
 /* CURSOR BOX WITH ADDITIONAL FIELD INFO */
 
+//Run the code to enable the display of the cursor box
 function applyCursorBoxJS(myDocument) {
 
     ensureCursorBox(myDocument);
@@ -633,6 +663,7 @@ function applyCursorBoxJS(myDocument) {
 
 }
 
+//Make sure that the required HTML is in the DOM
 function ensureCursorBox(myDocument) {
 
     var id = 'cursor-box';
@@ -648,6 +679,7 @@ function ensureCursorBox(myDocument) {
     myDocument.body.appendChild(cursorBox);
 }
 
+//Let the cursor box HTML follow the mouse movements if it is visible
 function listenToMouseMovements(myDocument) {
 
     var cursorBox = myDocument.getElementById('cursor-box');
@@ -675,6 +707,7 @@ function listenToMouseMovements(myDocument) {
     }
 }
 
+//Trigger the JS script for filling the cursor box with the correct info, within the right body
 function injectCursorBoxJS(myDocument) {
 
     var name = 'cursor_box';
@@ -692,7 +725,7 @@ function injectCursorBoxJS(myDocument) {
 
     script.id = id;
 
-    var scriptURL = browser.extension.getURL(name + '.js');
+    var scriptURL = getExtensionURLforFilename(name + '.js');
     // Set the src attribute to the URL of your bundled JavaScript file
     script.src = scriptURL;
     // Append the script to the document body
@@ -701,10 +734,10 @@ function injectCursorBoxJS(myDocument) {
     //console.log('Sucessfully injected ' + name + '.js');
 }
 
-// Flag to track whether the action has already been executed
+//Flag to track whether the CTRL key has already been pressed earlier
 let ctrlKeyPressed = false;
 
-// Function to handle the event when Ctrl key is pressed
+//Function to handle the event when Ctrl key is pressed
 function handleCtrlKey(event, myDocument) {
 
     if (!architectLinksEnabled()) {
@@ -727,7 +760,7 @@ function handleCtrlKey(event, myDocument) {
 
 }
 
-// Function to handle the event when Ctrl key is released
+//Function to handle the event when Ctrl key is released
 function handleCtrlKeyRelease(myDocument) {
 
     if (!architectLinksEnabled()) {
@@ -744,12 +777,15 @@ function handleCtrlKeyRelease(myDocument) {
 
     var cursorBox = myDocument.getElementById('cursor-box');
     cursorBox.classList.remove('freeze');
+    cursorBox.classList.remove('show');
 }
 
+//Return a bool for if architectlinks are enabled or not according to a class in the DOM
 function architectLinksEnabled() {
     return document.body.classList.contains(bodyClassName);
 }
 
+//Listen for CTRL key events to freeze/unfreeze the cursor box
 function listenForCTRL(myDocument) {
 
     // Add event listeners for keydown and keyup events
